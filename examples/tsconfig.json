@@ -3,10 +3,18 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "outDir": "./dist",
+    "emitDeclarationOnly": false,
+    "noEmit": true,
     "paths": {
       "@/*": ["../src/*"]
-    }
+    },
+    "types": ["node", "vite/client"]
   },
   "include": ["./**/*.ts", "./**/*.tsx", "./typings.d.ts"],
-  "references": [{ "path": "../tsconfig.node.json" }]
-} 
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    { "path": "../tsconfig.node.json" },
+    { "path": "../tsconfig.json" }
+  ]
+}

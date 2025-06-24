@@ -9,10 +9,10 @@ interface BoardItem {
 
 interface BoardViewProps {
   items: BoardItem[];
-  onItemMove?: (id: string, position: { x: number; y: number }) => void;
+  onItemMove: (id: string, position: { x: number; y: number }) => void;
   onItemResize?: (id: string, size: { width: number; height: number }) => void;
-  onItemAdd?: (position: { x: number; y: number }) => void;
-  onItemDelete?: (id: string) => void;
+  onItemAdd: (position: { x: number; y: number }) => void;
+  onItemDelete: (id: string) => void;
   gridSize?: number;
   snapToGrid?: boolean;
   readOnly?: boolean;
@@ -25,12 +25,9 @@ interface BoardViewProps {
 export const BoardView: React.FC<BoardViewProps> = ({
   items,
   onItemMove,
+  // onItemResize is part of the component's API but not used internally
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  
-  
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  onItemResize,
+  onItemResize: _onItemResize,
   onItemAdd,
   onItemDelete,
   gridSize = 20,

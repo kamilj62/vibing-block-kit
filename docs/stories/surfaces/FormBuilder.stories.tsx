@@ -54,13 +54,36 @@ interface FormBuilderStoryProps {
   resetLabel?: string;
 }
 
-const meta = {
-  title: 'Surfaces/Form/FormBuilder',
-  component: FormBuilder,
+// Define the props interface locally
+interface FormBuilderProps {
+  id: string;
+  fields: Array<{
+    id: string;
+    type: 'text' | 'number' | 'select' | 'checkbox' | 'radio' | 'date' | 'textarea';
+    label: string;
+    required?: boolean;
+    options?: Array<{ label: string; value: string }>;
+    placeholder?: string;
+    defaultValue?: any;
+  }>;
+  onSubmit: (data: Record<string, any>) => void;
+  onCancel?: () => void;
+  submitLabel?: string;
+  cancelLabel?: string;
+  className?: string;
+}
+
+const meta: Meta<FormBuilderProps> = {
+  title: 'Surfaces/FormBuilder',
+  component: FormBuilder as React.ComponentType<FormBuilderProps>,
   tags: ['autodocs'],
-  // Type argTypes as a generic Record to avoid type errors
-  argTypes: {} as Record<string, unknown>,
-} satisfies Meta<typeof FormBuilder>;
+  argTypes: {
+    onSubmit: { action: 'submitted' },
+    onCancel: { action: 'cancelled' },
+    submitLabel: { control: 'text' },
+    cancelLabel: { control: 'text' },
+  },
+};
 
 export default meta;
 type Story = StoryObj<FormBuilderStoryProps>;

@@ -21,13 +21,35 @@ interface WidgetStoryProps {
   };
 }
 
-const meta = {
+// Define the props interface locally
+interface WidgetProps {
+  id: string;
+  title: string;
+  children?: React.ReactNode;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+  actions?: Array<{
+    id: string;
+    icon: string;
+    tooltip: string;
+    onClick: () => void;
+  }>;
+  statusIndicator?: {
+    status: 'success' | 'warning' | 'error' | 'info';
+    label: string;
+  };
+}
+
+const meta: Meta<WidgetProps> = {
   title: 'Surfaces/Widget/Widget',
-  component: Widget,
+  component: Widget as React.ComponentType<WidgetProps>,
   tags: ['autodocs'],
-  // Type argTypes as a generic Record to avoid type errors
-  argTypes: {} as Record<string, unknown>,
-} satisfies Meta<typeof Widget>;
+  argTypes: {
+    collapsible: { control: 'boolean' },
+    defaultCollapsed: { control: 'boolean' },
+    statusIndicator: { control: 'object' },
+  },
+};
 
 export default meta;
 type Story = StoryObj<WidgetStoryProps>;
@@ -36,10 +58,12 @@ export const Basic: Story = {
   args: {
     id: 'widget-example',
     title: 'Information Widget',
-    children: React.createElement(TextBlock, {
-      id: "widget-text",
-      content: "This is a basic widget that can contain any Block Kit component. Widgets are useful for organizing content in a dashboard or sidebar."
-    }),
+    children: (
+      <TextBlock
+        id="widget-text"
+        text="This is a basic widget that can contain any Block Kit component. Widgets are useful for organizing content in a dashboard or sidebar."
+      />
+    ),
   },
 };
 
@@ -51,13 +75,15 @@ export const WithActions: Story = {
       { id: 'refresh', icon: 'refresh', tooltip: 'Refresh', onClick: () => {} },
       { id: 'settings', icon: 'settings', tooltip: 'Settings', onClick: () => {} },
     ],
-    children: React.createElement('div', { style: { padding: '12px' } },
-      React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
-        React.createElement('button', { style: { padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' } }, 'New Project'),
-        React.createElement('button', { style: { padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' } }, 'Import Data'),
-        React.createElement('button', { style: { padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' } }, 'Export Report'),
-        React.createElement('button', { style: { padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' } }, 'Share Link')
-      )
+    children: (
+      <div style={{ padding: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <button style={{ padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' }}>New Project</button>
+          <button style={{ padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' }}>Import Data</button>
+          <button style={{ padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' }}>Export Report</button>
+          <button style={{ padding: '8px', background: '#f1f5f9', borderRadius: '4px', border: 'none' }}>Share Link</button>
+        </div>
+      </div>
     ),
   },
 };
@@ -68,10 +94,11 @@ export const Collapsible: Story = {
     title: 'Code Snippet',
     collapsible: true,
     defaultCollapsed: false,
-    children: React.createElement(CodeBlock, {
-      id: "widget-code",
-      language: "javascript",
-      code: `function calculateTotal(items) {
+    children: (
+      <CodeBlock
+        id="widget-code"
+        language="javascript"
+        code={`function calculateTotal(items) {
   return items.reduce((sum, item) => {
     return sum + item.price * item.quantity;
   }, 0);
@@ -85,8 +112,9 @@ const items = [
 
 const total = calculateTotal(items);
 // Format and return the total
-return \`Total: $\${total}\`; // Outputs: Total: $50`
-    }),
+return \`Total: $\${total}\`; // Outputs: Total: $50`}
+      />
+    ),
   },
 };
 
@@ -98,25 +126,31 @@ export const WithStatus: Story = {
       status: 'success',
       label: 'Operational',
     },
-    children: React.createElement('div', { style: { padding: '12px' } },
-      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
-        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-          React.createElement('span', null, 'API Service'),
-          React.createElement('span', { style: { color: '#10b981' } }, 'Online')
-        ),
-        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-          React.createElement('span', null, 'Database'),
-          React.createElement('span', { style: { color: '#10b981' } }, 'Online')
-        ),
-        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-          React.createElement('span', null, 'Storage'),
-          React.createElement('span', { style: { color: '#10b981' } }, 'Online')
-        ),
-        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-          React.createElement('span', null, 'Authentication'),
-          React.createElement('span', { style: { color: '#10b981' } }, 'Online')
-        )
-      )
+    children: (
+      <div style={{ padding: '12px' }}>
+        <TextBlock
+          id="widget-status-text"
+          text="System Status Overview:"
+        />
+        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>API Service</span>
+            <span style={{ color: '#10b981' }}>Online</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Database</span>
+            <span style={{ color: '#10b981' }}>Online</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Storage</span>
+            <span style={{ color: '#10b981' }}>Online</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Authentication</span>
+            <span style={{ color: '#10b981' }}>Online</span>
+          </div>
+        </div>
+      </div>
     ),
   },
 }; 

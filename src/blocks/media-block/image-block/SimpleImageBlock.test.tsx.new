@@ -1,0 +1,395 @@
+// @vitest-environment jsdom
+
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import SimpleImageBlock from './SimpleImageBlock';
+import '@testing-library/jest-dom/vitest';
+
+// Extend expect with jest-dom matchers
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+// Extend expect with jest-dom matchers
+if (!('toHaveStyle' in expect)) {
+  // @ts-ignore - matchers are compatible
+  expect.extend(matchers);
+}
+
+// Mock the framer-motion library with proper typing
+vi.mock('framer-motion', async () => {
+  const actual = await vi.importActual('framer-motion');
+  
+  // Create properly typed motion components
+  const MotionDiv = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & { 'data-testid'?: string }>(
+    ({ children, 'data-testid': testId, ...props }, ref) => (
+      <div data-testid={testId || 'motion-div'} ref={ref} {...props}>
+        {children}
+      </div>
+    )
+  );
+  MotionDiv.displayName = 'MotionDiv';
+  
+  const MotionFigure = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }>(
+    ({ children, 'data-testid': testId, ...props }, ref) => (
+      <figure data-testid={testId || 'motion-figure'} ref={ref as React.Ref<HTMLElement>} {...props}>
+        {children}
+      </figure>
+    )
+  );
+  MotionFigure.displayName = 'MotionFigure';
+  
+  const MotionImg = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement> & { 'data-testid'?: string }>(
+    ({ 'data-testid': testId, ...props }, ref) => (
+      <img 
+        data-testid={testId || 'motion-img'} 
+        ref={ref} 
+        {...props} 
+        alt={props.alt || ''} 
+      />
+    )
+  );
+  MotionImg.displayName = 'MotionImg';
+
+  return {
+    ...actual,
+    motion: {
+      ...actual.motion,
+      div: MotionDiv,
+      figure: MotionFigure,
+      img: MotionImg,
+    },
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+    useAnimation: () => ({
+      start: vi.fn(),
+      set: vi.fn(),
+      stop: vi.fn(),
+    }),
+    useInView: () => [vi.fn(), true],
+    useReducedMotion: () => false,
+    useAnimationControls: () => ({
+      start: vi.fn(),
+      set: vi.fn(),
+      stop: vi.fn(),
+    }),
+  };
+});
+
+// Mock the @iconify/react library with proper implementation
+vi.mock('@iconify/react', () => ({
+  Icon: ({ icon, ...props }: { icon: string } & React.HTMLAttributes<HTMLSpanElement>) => (
+    <span 
+      data-testid="mock-icon" 
+      data-icon={icon} 
+      {...props} 
+      role="img" 
+      aria-label={props['aria-label'] || 'icon'}
+    />
+  ),
+}));
+
+// Helper function to mock image loading
+const mockImageLoading = () => {
+  // Store the original Image constructor
+  const OriginalImage = window.Image;
+  
+  // Create a mock Image class for testing
+  class MockImage implements Partial<HTMLImageElement> {
+    src: string = '';
+    onload: (() => void) | null = null;
+    onerror: ((event: Event | string) => void) | null = null;
+    complete: boolean = false;
+    naturalWidth: number = 100;
+    naturalHeight: number = 100;
+    width: number = 100;
+    height: number = 100;
+    
+    constructor() {
+      // Simulate image loading after a short delay
+      setTimeout(() => {
+        if (this.onload) {
+          this.complete = true;
+          this.onload(new Event('load'));
+        }
+      }, 10);
+    }
+    
+    // Add other required properties and methods
+    addEventListener = (type: string, listener: EventListenerOrEventListenerObject) => {
+      if (type === 'load' && this.complete) {
+        // If already loaded, trigger the load event immediately
+        setTimeout(() => {
+          if (typeof listener === 'function') {
+            listener(new Event('load'));
+          } else if (listener && typeof listener.handleEvent === 'function') {
+            listener.handleEvent(new Event('load'));
+          }
+        }, 0);
+      }
+    };
+    
+    removeEventListener = () => {};
+    dispatchEvent = () => true;
+  }
+  
+  // Override the global Image constructor
+  window.Image = MockImage as unknown as new (width?: number, height?: number) => HTMLImageElement;
+  
+  // Return a function to restore the original Image constructor
+  return () => {
+    window.Image = OriginalImage;
+  };
+};
+
+// Mock IntersectionObserver with proper TypeScript types
+class MockIntersectionObserver implements IntersectionObserver {
+  readonly root: Element | Document | null = null;
+  readonly rootMargin: string = '';
+  readonly thresholds: readonly number[] = [];
+  
+  private callback: IntersectionObserverCallback;
+  private targets: Set<Element> = new Set();
+  
+  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+    this.callback = callback;
+    if (options) {
+      this.root = options.root || null;
+      this.rootMargin = options.rootMargin || '';
+      this.thresholds = Array.isArray(options.threshold) 
+        ? options.threshold 
+        : [options.threshold ?? 0];
+    }
+  }
+  
+  observe(target: Element): void {
+    this.targets.add(target);
+    // Trigger intersection immediately
+    Promise.resolve().then(() => {
+      const rect = target.getBoundingClientRect();
+      const entry: IntersectionObserverEntry = {
+        isIntersecting: true,
+        target,
+        intersectionRatio: 1,
+        boundingClientRect: rect,
+        intersectionRect: rect,
+        rootBounds: null,
+        time: performance.now(),
+        isVisible: true
+      } as IntersectionObserverEntry;
+      this.callback([entry], this);
+    });
+  }
+  
+  unobserve(target: Element): void {
+    this.targets.delete(target);
+  }
+  
+  disconnect(): void {
+    this.targets.clear();
+  }
+  
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+// Set up test environment
+beforeEach(() => {
+  // Reset all mocks before each test
+  vi.clearAllMocks();
+  
+  // Mock IntersectionObserver
+  // @ts-ignore - Mocking global
+  window.IntersectionObserver = MockIntersectionObserver;
+  
+  // Mock requestAnimationFrame
+  window.requestAnimationFrame = (cb) => {
+    return window.setTimeout(cb, 0);
+  };
+  
+  // Mock cancelAnimationFrame
+  window.cancelAnimationFrame = (id) => {
+    clearTimeout(id);
+  };
+});
+
+afterEach(() => {
+  // Clean up any mocks
+  vi.restoreAllMocks();
+});
+
+// Helper to wait for loading to complete
+const waitForLoadingComplete = async (img: HTMLElement) => {
+  await waitFor(() => {
+    // Wait for the image to be in the document
+    expect(img).toBeInTheDocument();
+    
+    // Wait for the image to be visible
+    expect(img).toBeVisible();
+    
+    // Wait for the image to have loaded
+    expect(img).toHaveAttribute('data-loaded', 'true');
+  }, { timeout: 1000 });
+};
+
+describe('SimpleImageBlock', () => {
+  it('renders with default props', async () => {
+    // Render the component
+    const { container } = render(
+      <SimpleImageBlock 
+        defaultSource={{
+          src: 'https://example.com/image.jpg',
+          width: 800,
+          height: 600,
+        }}
+      />
+    );
+    
+    // The image should be in the document
+    const img = screen.getByRole('img');
+    expect(img).toBeInTheDocument();
+    
+    // The image should have the correct src
+    expect(img).toHaveAttribute('src', 'https://example.com/image.jpg');
+    
+    // The image should have the correct dimensions
+    expect(img).toHaveAttribute('width', '800');
+    expect(img).toHaveAttribute('height', '600');
+  });
+  
+  it('calls onLoad when image loads', async () => {
+    // Mock the onLoad handler
+    const handleLoad = vi.fn();
+    
+    // Render the component
+    render(
+      <SimpleImageBlock 
+        defaultSource={{
+          src: 'https://example.com/image.jpg',
+          width: 800,
+          height: 600,
+        }}
+        onLoad={handleLoad}
+      />
+    );
+    
+    // Get the image
+    const img = screen.getByRole('img');
+    
+-import { render, screen, waitFor } from '@testing-library/react';
++import { render, screen, waitFor, act } from '@testing-library/react';
+    
+    // The onLoad handler should be called
+    await waitFor(() => {
+      expect(handleLoad).toHaveBeenCalledTimes(1);
+    });
+  });
+  
+  it('applies className and style props', () => {
+    // Render the component with className and style
+    const { container } = render(
+      <SimpleImageBlock 
+        defaultSource={{
+          src: 'https://example.com/image.jpg',
+          width: 800,
+          height: 600,
+        }}
+        className="custom-class"
+        style={{ backgroundColor: 'red' }}
+      />
+    );
+    
+    // The container should have the custom class
+    const imageBlock = container.querySelector('.image-block');
+    expect(imageBlock).toHaveClass('custom-class');
+    
+    // The container should have the custom style
+    expect(imageBlock).toHaveStyle('background-color: red');
+  });
+  
+  it('applies imageClassName and imageStyle props', () => {
+    // Render the component with imageClassName and imageStyle
+    render(
+      <SimpleImageBlock 
+        defaultSource={{
+          src: 'https://example.com/image.jpg',
+          width: 800,
+          height: 600,
+        }}
+        imageClassName="custom-image-class"
+        imageStyle={{ opacity: 0.5 }}
+      />
+    );
+    
+    // The image should have the custom class
+    const img = screen.getByRole('img');
+    expect(img).toHaveClass('custom-image-class');
+    
+    // The image should have the custom style
+    expect(img).toHaveStyle('opacity: 0.5');
+  });
+  
+  it('renders with LQIP when provided', async () => {
+    // Mock image loading
+    const restoreImageMock = mockImageLoading();
+    
+    // Render the component with LQIP
+    render(
+      <SimpleImageBlock 
+        defaultSource={{
+          src: 'https://example.com/image.jpg',
+          width: 800,
+          height: 600,
+        }}
+        lqip="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOCIgaGVpZ2h0PSI4IiB2aWV3Qm94PSIwIDAgOCA4IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiNkZGQiLz48L3N2Zz4="
+      />
+    );
+    
+    // The image should be in the document
+    const img = screen.getByRole('img');
+    expect(img).toBeInTheDocument();
+    
+    // The image should have the LQIP as the initial src
+    expect(img).toHaveAttribute('src', 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOCIgaGVpZ2h0PSI4IiB2aWV3Qm94PSIwIDAgOCA4IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiNkZGQiLz48L3N2Zz4=');
+    
+    // Simulate image load
+    await act(async () => {
+      img.dispatchEvent(new Event('load'));
+    });
+    
+    // After load, the image should have the default source as src
+    expect(img).toHaveAttribute('src', 'https://example.com/image.jpg');
+    
+    // Restore the original Image constructor
+    restoreImageMock();
+  });
+  
+  it('handles image loading error', async () => {
+    // Mock console.error to avoid error logs in test output
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Render the component with an invalid image source
+    render(
+      <SimpleImageBlock 
+        defaultSource={{
+          src: 'https://example.com/invalid-image.jpg',
+          width: 800,
+          height: 600,
+        }}
+      />
+    );
+    
+    // Get the image
+    const img = screen.getByRole('img');
+    
+    // Simulate image error
+    await act(async () => {
+      img.dispatchEvent(new Event('error'));
+    });
+    
+    // The image should still be in the document
+    expect(img).toBeInTheDocument();
+    
+    // Restore console.error
+    consoleError.mockRestore();
+  });
+});

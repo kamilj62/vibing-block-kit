@@ -9,6 +9,25 @@ interface Tool {
   tooltip?: string;
 }
 
+// Define the props interface for the component
+interface ToolPaletteProps {
+  id: string;
+  tools: Array<{
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+    shortcut?: string;
+    group?: string;
+    disabled?: boolean;
+  }>;
+  onSelectTool?: (toolId: string) => void;
+  selectedToolId?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  orientation?: 'horizontal' | 'vertical';
+  showLabels?: boolean;
+}
+
 // Define a custom props interface for storybook
 interface ToolPaletteStoryProps {
   id?: string;
@@ -25,13 +44,20 @@ interface ToolPaletteStoryProps {
   showLabels?: boolean;
 }
 
-const meta = {
-  title: 'Surfaces/Tool/ToolPalette',
-  component: ToolPalette,
+const meta: Meta<ToolPaletteProps> = {
+  title: 'Surfaces/ToolPalette',
+  component: ToolPalette as React.ComponentType<ToolPaletteProps>,
   tags: ['autodocs'],
-  // Type argTypes as a generic Record to avoid type errors
-  argTypes: {} as Record<string, unknown>,
-} satisfies Meta<typeof ToolPalette>;
+  argTypes: {
+    onSelectTool: { action: 'toolSelected' },
+    selectedToolId: { control: 'text' },
+    orientation: {
+      control: 'select',
+      options: ['horizontal', 'vertical']
+    },
+    showLabels: { control: 'boolean' }
+  },
+};
 
 export default meta;
 type Story = StoryObj<ToolPaletteStoryProps>;

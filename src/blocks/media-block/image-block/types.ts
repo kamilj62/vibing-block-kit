@@ -126,4 +126,14 @@ export interface ImageBlockProps extends Omit<BlockProps, 'onChange'> {
    * Callback when image fails to load
    */
   onError?: (error: Error) => void;
+  
+  /**
+   * Callback when image is clicked
+   */
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  
+  /**
+   * Callback when zoom state changes
+   */
+  onZoomChange?: (isZoomed: boolean) => void;
 }

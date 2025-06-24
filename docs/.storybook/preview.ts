@@ -1,9 +1,21 @@
 import type { Preview } from '@storybook/react';
 import { withThemeByClassName } from '@storybook/addon-themes';
+import React from 'react';
 import '../styles.css';
-import { Provider } from './provider';
+
+// Temporarily disable Provider to resolve type issues
+// import { Provider } from './provider';
 
 const preview: Preview = {
+  decorators: [
+    withThemeByClassName({
+      themes: {
+        light: '',
+        dark: 'dark',
+      },
+      defaultTheme: 'light',
+    }),
+  ],
   parameters: {
     actions: { argTypesRegex: '^on[A-Z].*' },
     controls: {
@@ -13,16 +25,6 @@ const preview: Preview = {
       },
     },
   },
-  decorators: [
-    withThemeByClassName({
-      themes: {
-        light: '',
-        dark: 'dark',
-      },
-      defaultTheme: 'light',
-      Provider,
-    }),
-  ],
 };
 
-export default preview; 
+export default preview;

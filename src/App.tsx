@@ -1,4 +1,4 @@
-import { ImageBlock } from './blocks/media-block/ImageBlock.fixed';
+import { ImageBlock } from './blocks/media-block/ImageBlock';
 
 function App() {
   return (
@@ -22,7 +22,7 @@ function App() {
             shadow="sm"
             caption="Beautiful landscape with responsive image loading"
             onLoad={() => console.log('Hero image loaded')}
-            onError={(e) => console.error('Failed to load hero image', e)}
+            onError={(e: Error) => console.error('Failed to load hero image', e)}
           />
         </div>
         

@@ -1,7 +1,26 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
-    "jsx": "react-jsx"
+    "composite": true,
+    "rootDir": ".",
+    "baseUrl": "../../../",
+    "tsBuildInfoFile": "../../../node_modules/.cache/tsbuildinfo/media-block/tsconfig.tsbuildinfo",
+    "paths": {
+      "@/*": ["src/*"],
+      "@vibing-ai/block-kit": ["src/index"],
+      "@vibing-ai/block-kit/*": ["src/*"]
+    },
+    "types": ["node", "@testing-library/jest-dom"]
   },
-  "include": ["./*.tsx", "./*.ts"]
+  "include": [
+    "./**/*.tsx",
+    "./**/*.ts",
+    "../**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
 }

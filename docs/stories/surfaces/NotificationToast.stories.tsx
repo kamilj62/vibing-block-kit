@@ -16,13 +16,32 @@ interface NotificationToastStoryProps {
   };
 }
 
-const meta = {
+// Define the props interface locally
+interface NotificationToastProps {
+  id: string;
+  title: string;
+  message: string;
+  type?: 'info' | 'success' | 'warning' | 'error';
+  duration?: number;
+  onClose?: () => void;
+  showCloseButton?: boolean;
+  className?: string;
+}
+
+const meta: Meta<NotificationToastProps> = {
   title: 'Surfaces/Notification/NotificationToast',
-  component: NotificationToast,
+  component: NotificationToast as React.ComponentType<NotificationToastProps>,
   tags: ['autodocs'],
-  // Type argTypes as a generic Record to avoid type errors
-  argTypes: {} as Record<string, unknown>,
-} satisfies Meta<typeof NotificationToast>;
+  argTypes: {
+    type: {
+      control: 'select',
+      options: ['info', 'success', 'warning', 'error']
+    },
+    duration: { control: 'number' },
+    onClose: { action: 'closed' },
+    showCloseButton: { control: 'boolean' }
+  },
+};
 
 export default meta;
 type Story = StoryObj<NotificationToastStoryProps>;

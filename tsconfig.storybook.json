@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "types": ["node", "@storybook/react", "@storybook/addons", "@storybook/components"]
+  },
+  "include": [
+    "src/**/*.stories.tsx",
+    "src/**/*.stories.ts",
+    "docs/**/*.stories.tsx",
+    ".storybook/*.ts",
+    ".storybook/*.tsx"
+  ]
+}

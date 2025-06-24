@@ -19,12 +19,9 @@ interface NotificationToastProps {
  * Toast notification component
  */
 export const NotificationToast: React.FC<NotificationToastProps> = ({
+  // id is part of the component's API but not used internally
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  
-  
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  id,
+  id: _id,
   type = 'info',
   title,
   message,
@@ -45,6 +42,9 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
       
       return () => clearTimeout(timer);
     }
+    
+    // Return empty cleanup function if duration is 0 or negative
+    return () => {};
   }, [duration, onClose]);
   
   const handleClose = () => {

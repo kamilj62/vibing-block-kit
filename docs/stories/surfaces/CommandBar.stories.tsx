@@ -33,13 +33,29 @@ interface CommandBarStoryProps {
   onSelect?: (item: unknown) => void;
 }
 
-const meta = {
-  title: 'Surfaces/Command/CommandBar',
-  component: CommandBar,
+// Define the props interface locally
+interface CommandBarProps {
+  commands: Array<{
+    id: string;
+    label: string;
+    icon?: string;
+    shortcut?: string;
+    group?: string;
+    onSelect: () => void;
+  }>;
+  onCommandSelect?: (commandId: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+const meta: Meta<CommandBarProps> = {
+  title: 'Surfaces/CommandBar',
+  component: CommandBar as React.ComponentType<CommandBarProps>,
   tags: ['autodocs'],
-  // Type argTypes as a generic Record to avoid type errors
-  argTypes: {} as Record<string, unknown>,
-} satisfies Meta<typeof CommandBar>;
+  argTypes: {
+    onCommandSelect: { action: 'commandSelected' },
+  },
+};
 
 export default meta;
 type Story = StoryObj<CommandBarStoryProps>;

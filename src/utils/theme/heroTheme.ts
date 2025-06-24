@@ -13,9 +13,17 @@ export type ThemeAdditionalProps = Record<string, unknown>;
 /**
  * Simple theme type definition
  */
+interface ThemeColors {
+  [key: string]: ColorObject | undefined;
+  primary?: ColorObject;
+  secondary?: ColorObject;
+  accent?: ColorObject;
+  neutral?: ColorObject;
+}
+
 export interface ThemeConfig {
   type?: 'light' | 'dark';
-  colors?: Record<string, ColorObject>;
+  colors?: ThemeColors;
   [key: string]: unknown;
 }
 
@@ -36,12 +44,24 @@ export interface CustomThemeOptions extends ThemeAdditionalProps {
 export function createCustomTheme(options: CustomThemeOptions): ThemeConfig {
   const { type = 'light', ...colorOptions } = options;
   
+  const colors: ThemeColors = {};
+  
+  // Only include defined color options
+  if (colorOptions.primary) colors.primary = colorOptions.primary;
+  if (colorOptions.secondary) colors.secondary = colorOptions.secondary;
+  if (colorOptions.accent) colors.accent = colorOptions.accent;
+  if (colorOptions.neutral) colors.neutral = colorOptions.neutral;
+  
+  // Include any additional color options
+  Object.entries(colorOptions).forEach(([key, value]) => {
+    if (value && !['primary', 'secondary', 'accent', 'neutral'].includes(key)) {
+      colors[key] = value as ColorObject;
+    }
+  });
+  
   return {
     type,
-    colors: {
-      // Allow custom colors to be passed in
-      ...colorOptions
-    }
+    colors
   };
 }
 

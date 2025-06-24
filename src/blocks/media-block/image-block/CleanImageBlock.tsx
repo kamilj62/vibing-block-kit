@@ -32,7 +32,7 @@ function createSyntheticMouseEvent<T extends HTMLElement>(
 const radiusMap: Record<string, string> = {
   none: '0',
   sm: '0.125rem',
-  md: '0.5rem', // Updated to match test expectation (was 0.375rem)
+  md: '0.375rem',
   lg: '0.5rem',
   xl: '0.75rem',
   '2xl': '1rem',
@@ -44,7 +44,7 @@ const radiusMap: Record<string, string> = {
 const shadowMap: Record<string, string> = {
   none: 'none',
   sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-  md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', // Updated to match test expectation
+  md: '0 2px 4px -1px rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
   lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1)',
   xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.1)',
   '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
@@ -71,19 +71,27 @@ const generateSrcSet = (sources: ImageSource[]): string => {
     .join(', ');
 };
 
-// Generate sizes attribute
+// Generate sizes attribute from sources
+// Returns a string suitable for the HTML sizes attribute
 const generateSizes = (sources: ImageSource[]): string => {
-  if (!sources || !Array.isArray(sources)) return '';
-  
+  if (!sources || !Array.isArray(sources)) return '100vw';
+
   return sources
     .map(src => {
-      if (src && src.media && isNonEmptyString(src.media)) {
-        return src.media;
+      if (!src) return '';
+      
+      // If sizes is explicitly provided, use it
+      if (src.sizes) return src.sizes;
+      
+      // If we have media and width, create a sizes value
+      if (src.media && src.width) {
+        return `${src.media} ${src.width}px`;
       }
+      
       return '';
     })
     .filter(Boolean)
-    .join(', ');
+    .join(', ') || '100vw';
 };
 
 const CleanImageBlock: React.FC<ImageBlockProps> = (props) => {
@@ -123,9 +131,8 @@ const CleanImageBlock: React.FC<ImageBlockProps> = (props) => {
   // Generate srcSet and sizes from props or main source
   const sources: ImageSource[] = Array.isArray(srcProp) ? srcProp : [];
   const generatedSrcSet: string = generateSrcSet(sources);
-  const generatedSizes: string = Array.isArray(sizes) && sizes.length > 0 
-    ? sizes.join(', ')
-    : generateSizes(sources) || '100vw';
+  // Use sizes prop directly if provided, otherwise generate from sources
+  const generatedSizes: string = sizes || generateSizes(sources);
     
   // Handle image load
   const handleLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -302,8 +309,7 @@ const CleanImageBlock: React.FC<ImageBlockProps> = (props) => {
         height={typeof height === 'number' ? height : undefined}
         loading={loading}
         decoding={decoding}
-        // @ts-expect-error - fetchpriority is a valid HTML attribute but not in React's types yet
-        fetchpriority={fetchPriority}
+        fetchPriority={fetchPriority}
         srcSet={generatedSrcSet}
         sizes={generatedSizes}
         onLoad={handleLoad}
@@ -337,47 +343,13 @@ const CleanImageBlock: React.FC<ImageBlockProps> = (props) => {
         tabIndex: 0,
         onClick: (e: React.MouseEvent<HTMLElement>) => {
           e.preventDefault();
-          // Create a properly typed event
-          const event = {
-            ...e,
-            currentTarget: e.currentTarget as HTMLElement,
-            target: e.target as HTMLElement,
-            preventDefault: () => e.preventDefault(),
-            stopPropagation: () => e.stopPropagation(),
-            // Add other required properties with default values
-            button: 0,
-            buttons: 1,
-            clientX: 0,
-            clientY: 0,
-            pageX: 0,
-            pageY: 0,
-            screenX: 0,
-            screenY: 0,
-            getModifierState: () => false,
-          } as unknown as React.MouseEvent<HTMLElement>;
+          const event = createSyntheticMouseEvent(e);
           onClickProp(event);
         },
         onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            // Create a properly typed synthetic mouse event
-            const syntheticEvent = {
-              ...e,
-              currentTarget: e.currentTarget as HTMLElement,
-              target: e.target as HTMLElement,
-              preventDefault: () => e.preventDefault(),
-              stopPropagation: () => e.stopPropagation(),
-              // Add other required properties with default values
-              button: 0,
-              buttons: 1,
-              clientX: 0,
-              clientY: 0,
-              pageX: 0,
-              pageY: 0,
-              screenX: 0,
-              screenY: 0,
-              getModifierState: () => false,
-            } as unknown as React.MouseEvent<HTMLElement>;
+            const syntheticEvent = createSyntheticMouseEvent(e);
             onClickProp(syntheticEvent);
           }
         }
@@ -473,24 +445,7 @@ const CleanImageBlock: React.FC<ImageBlockProps> = (props) => {
         'aria-label': alt || (isZoomed ? 'Zoom out' : 'Zoom in'),
         onClick: (e: React.MouseEvent<HTMLElement>) => {
           e.preventDefault();
-          // Create a properly typed event
-          const event = {
-            ...e,
-            currentTarget: e.currentTarget as HTMLElement,
-            target: e.target as HTMLElement,
-            preventDefault: () => e.preventDefault(),
-            stopPropagation: () => e.stopPropagation(),
-            // Add other required properties with default values
-            button: 0,
-            buttons: 1,
-            clientX: 0,
-            clientY: 0,
-            pageX: 0,
-            pageY: 0,
-            screenX: 0,
-            screenY: 0,
-            getModifierState: () => false,
-          } as unknown as React.MouseEvent<HTMLElement>;
+          const event = createSyntheticMouseEvent(e);
           handleClick(event);
         },
         onKeyDown: handleKeyDown,
@@ -503,47 +458,13 @@ const CleanImageBlock: React.FC<ImageBlockProps> = (props) => {
         tabIndex: 0,
         onClick: (e: React.MouseEvent<HTMLElement>) => {
           e.preventDefault();
-          // Create a properly typed event
-          const event = {
-            ...e,
-            currentTarget: e.currentTarget as HTMLElement,
-            target: e.target as HTMLElement,
-            preventDefault: () => e.preventDefault(),
-            stopPropagation: () => e.stopPropagation(),
-            // Add other required properties with default values
-            button: 0,
-            buttons: 1,
-            clientX: 0,
-            clientY: 0,
-            pageX: 0,
-            pageY: 0,
-            screenX: 0,
-            screenY: 0,
-            getModifierState: () => false,
-          } as unknown as React.MouseEvent<HTMLElement>;
+          const event = createSyntheticMouseEvent(e);
           onClickProp(event);
         },
         onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            // Create a properly typed synthetic mouse event
-            const syntheticEvent = {
-              ...e,
-              currentTarget: e.currentTarget as HTMLElement,
-              target: e.target as HTMLElement,
-              preventDefault: () => e.preventDefault(),
-              stopPropagation: () => e.stopPropagation(),
-              // Add other required properties with default values
-              button: 0,
-              buttons: 1,
-              clientX: 0,
-              clientY: 0,
-              pageX: 0,
-              pageY: 0,
-              screenX: 0,
-              screenY: 0,
-              getModifierState: () => false,
-            } as unknown as React.MouseEvent<HTMLElement>;
+            const syntheticEvent = createSyntheticMouseEvent(e);
             onClickProp(syntheticEvent);
           }
         }

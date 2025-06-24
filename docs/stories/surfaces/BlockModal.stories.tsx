@@ -12,13 +12,29 @@ interface BlockModalStoryProps {
   children?: React.ReactNode;
 }
 
-const meta = {
+// Define the props interface locally
+interface BlockModalProps {
+  id?: string;
+  title?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  children?: React.ReactNode;
+}
+
+const meta: Meta<BlockModalProps> = {
   title: 'Surfaces/Modal/BlockModal',
-  component: BlockModal,
+  component: BlockModal as React.ComponentType<BlockModalProps>,
   tags: ['autodocs'],
-  // Type argTypes as a generic Record to avoid type errors
-  argTypes: {} as Record<string, unknown>,
-} satisfies Meta<typeof BlockModal>;
+  argTypes: {
+    isOpen: { control: 'boolean' },
+    size: { 
+      control: 'select',
+      options: ['sm', 'md', 'lg', 'xl', 'full']
+    },
+    onClose: { action: 'closed' }
+  },
+};
 
 export default meta;
 type Story = StoryObj<BlockModalStoryProps>;
@@ -29,10 +45,12 @@ export const Basic: Story = {
     title: 'Information',
     isOpen: true,
     onClose: () => {},
-    children: React.createElement(TextBlock, {
-      id: "modal-text",
-      content: "This is a modal dialog that can contain any Block Kit component. It provides a focused way to present information or gather user input."
-    }),
+    children: (
+      <TextBlock
+        id="modal-text"
+        text="This is a modal dialog that can contain any Block Kit component. It provides a focused way to present information or gather user input."
+      />
+    ),
   },
 };
 
@@ -43,37 +61,45 @@ export const WithForm: Story = {
     isOpen: true,
     onClose: () => {},
     size: 'md',
-    children: React.createElement(FormBlock, {
-      id: "modal-form",
-      children: [
-        React.createElement('div', { key: 'field-1', className: 'form-field' }, [
-          React.createElement('label', { htmlFor: 'projectName' }, 'Project Name'),
-          React.createElement('input', { 
-            id: 'projectName', 
-            type: 'text', 
-            placeholder: 'Enter project name', 
-            required: true 
-          })
-        ]),
-        React.createElement('div', { key: 'field-2', className: 'form-field' }, [
-          React.createElement('label', { htmlFor: 'description' }, 'Description'),
-          React.createElement('textarea', { 
-            id: 'description', 
-            placeholder: 'Enter project description', 
-            rows: 4 
-          })
-        ]),
-        React.createElement('div', { key: 'field-3', className: 'form-field' }, [
-          React.createElement('label', { htmlFor: 'category' }, 'Category'),
-          React.createElement('select', { id: 'category' }, [
-            React.createElement('option', { value: 'web' }, 'Web Development'),
-            React.createElement('option', { value: 'mobile' }, 'Mobile App'),
-            React.createElement('option', { value: 'data' }, 'Data Science'),
-            React.createElement('option', { value: 'ai' }, 'Artificial Intelligence')
-          ])
-        ])
-      ]
-    })
+    children: (
+      <div style={{ padding: '16px' }}>
+        <FormBlock 
+          id="modal-form" 
+          fields={[
+            {
+              id: 'projectName',
+              type: 'text',
+              label: 'Project Name',
+              value: '',
+              required: true,
+              placeholder: 'Enter project name'
+            },
+            {
+              id: 'description',
+              type: 'textarea',
+              label: 'Description',
+              value: '',
+              placeholder: 'Enter project description'
+            },
+            {
+              id: 'category',
+              type: 'select',
+              label: 'Category',
+              value: '',
+              options: [
+                { label: 'Web Development', value: 'web' },
+                { label: 'Mobile App', value: 'mobile' },
+                { label: 'Data Science', value: 'data' },
+                { label: 'Artificial Intelligence', value: 'ai' }
+              ]
+            }
+          ]}
+          submitLabel="Create Project"
+          cancelLabel="Cancel"
+          onSubmit={(data) => console.log('Form submitted:', data)}
+        />
+      </div>
+    )
   },
 };
 
@@ -85,10 +111,10 @@ export const FullScreen: Story = {
     onClose: () => {},
     size: 'full',
     children: React.createElement('div', { style: { padding: '20px' } },
-      React.createElement(TextBlock, {
-        id: "fullscreen-text",
-        content: "This is a fullscreen modal that can be used for detailed views or complex interactions. It provides maximum space while still maintaining the modal context."
-      }),
+      <TextBlock
+        id="fullscreen-text"
+        text="This is a fullscreen modal that can be used for detailed views or complex interactions. It provides maximum space while still maintaining the modal context."
+      />,
       React.createElement('div', { 
         style: { 
           height: '400px', 

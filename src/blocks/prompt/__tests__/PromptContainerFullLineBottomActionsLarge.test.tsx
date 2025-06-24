@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import { PromptContainerFullLineBottomActionsLarge } from '../PromptContainerFullLineBottomActionsLarge';
+
+// Test utilities are available globally via Vitest config
 
 describe('PromptContainerFullLineBottomActionsLarge', () => {
   it('renders with default props', () => {

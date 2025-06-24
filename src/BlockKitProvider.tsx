@@ -2,7 +2,11 @@ import React from 'react';
 import { HeroUIProvider } from '@heroui/react';
 
 // Define a more specific type for theme objects
-export type ThemeObject = Record<string, string | number | boolean | ThemeObject>;
+interface ThemeValueMap {
+  [key: string]: string | number | boolean | ThemeValueMap | ThemeValueMap[];
+}
+
+export type ThemeObject = Record<string, string | number | boolean | ThemeValueMap | ThemeValueMap[]>;
 
 export interface BlockKitProviderProps {
   /**
@@ -44,7 +48,14 @@ export const BlockKitProvider: React.FC<BlockKitProviderProps> = ({
       };
       
       darkModeQuery.addEventListener('change', listener);
-      return () => darkModeQuery.removeEventListener('change', listener);
+      
+      // Return cleanup function
+      return () => {
+        darkModeQuery.removeEventListener('change', listener);
+      };
+    } else {
+      // Return empty cleanup function if not using system theme
+      return () => {};
     }
   }, [useSystemTheme]);
   

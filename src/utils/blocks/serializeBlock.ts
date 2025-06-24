@@ -16,13 +16,20 @@ export function serializeBlock(block: BlockLike): BlockData {
   }
   
   // Extract the relevant information from the block
-  const { id, type, ...data } = block;
+  const { id, type } = block as { id: string; type: BlockType };
+  // Create a new object with all properties except id and type
+  const data: Record<string, unknown> = {};
+  Object.entries(block).forEach(([key, value]) => {
+    if (key !== 'id' && key !== 'type') {
+      data[key] = value;
+    }
+  });
   
   return {
     id,
     type: type as BlockType,
     ...data
-  };
+  } as BlockData;
 }
 
 /**

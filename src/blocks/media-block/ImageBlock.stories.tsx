@@ -8,9 +8,10 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'A responsive image component with zoom functionality. Click on the image to zoom in/out.',
+        component: 'A responsive image component with zoom functionality. Double-click to zoom, use mouse wheel + Ctrl to zoom in/out, and click and drag to pan when zoomed in.',
       },
     },
+    controls: { expanded: true },
   },
   tags: ['autodocs'],
   argTypes: {
@@ -44,11 +45,14 @@ const meta = {
     },
   },
   args: {
-    alt: 'Random image from picsum.photos',
+    src: 'https://picsum.photos/1600/900',
+    alt: 'A beautiful landscape',
     width: 800,
     height: 450,
     rounded: true,
-    zoomable: true
+    zoomable: true,
+    hasBorder: true,
+    caption: 'Double-click to zoom • Use mouse wheel + Ctrl to zoom in/out',
   },
 } satisfies Meta<typeof ImageBlock>;
 
@@ -58,12 +62,22 @@ type Story = StoryObj<typeof ImageBlock>;
 
 export const Default: Story = {
   args: {
-    alt: 'Random image from picsum.photos',
-    caption: 'Click to zoom',
+    src: 'https://picsum.photos/1600/900',
+    alt: 'A beautiful landscape',
+    caption: 'Double-click to zoom • Use mouse wheel + Ctrl to zoom in/out',
     width: 800,
     height: 450,
     rounded: true,
     zoomable: true,
+    hasBorder: true,
+  },
+  parameters: {
+    layout: 'centered',
+    docs: {
+      description: {
+        story: 'Default image with zoom functionality. Double-click to zoom, use mouse wheel + Ctrl to zoom in/out, and click and drag to pan when zoomed in.'
+      },
+    },
   },
 };
 

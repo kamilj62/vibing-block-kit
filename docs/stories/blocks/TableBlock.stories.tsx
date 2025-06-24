@@ -21,9 +21,9 @@ export const Basic: Story = {
   args: {
     id: 'table-block-example',
     columns: [
-      { header: 'Name', accessor: 'name' },
-      { header: 'Age', accessor: 'age' },
-      { header: 'Status', accessor: 'status' },
+      { header: 'Name', accessorKey: 'name' },
+      { header: 'Age', accessorKey: 'age' },
+      { header: 'Status', accessorKey: 'status' },
     ],
     data: [
       { name: 'John Doe', age: 28, status: 'Active' },
@@ -37,9 +37,9 @@ export const WithTitle: Story = {
   args: {
     id: 'table-block-title-example',
     columns: [
-      { header: 'Name', accessor: 'name' },
-      { header: 'Age', accessor: 'age' },
-      { header: 'Status', accessor: 'status' },
+      { header: 'Name', accessorKey: 'name' },
+      { header: 'Age', accessorKey: 'age' },
+      { header: 'Status', accessorKey: 'status' },
     ],
     data: [
       { name: 'John Doe', age: 28, status: 'Active' },
@@ -53,9 +53,9 @@ export const Customized: Story = {
   args: {
     id: 'table-block-customized-example',
     columns: [
-      { header: 'Name', accessor: 'name' },
-      { header: 'Age', accessor: 'age' },
-      { header: 'Status', accessor: 'status' },
+      { header: 'Name', accessorKey: 'name' },
+      { header: 'Age', accessorKey: 'age' },
+      { header: 'Status', accessorKey: 'status' },
     ],
     data: [
       { name: 'John Doe', age: 28, status: 'Active' },

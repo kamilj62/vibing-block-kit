@@ -1,2 +1,2 @@
-export { default } from './ImageBlock';
+export { ImageBlock } from './ImageBlock';
 export * from './types';

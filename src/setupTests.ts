@@ -1,156 +1,143 @@
-// jest-dom adds custom jest matchers for DOM assertions
-// learn more: https://github.com/testing-library/jest-dom
-import { cleanup } from '@testing-library/react';
+// Import test utilities
 import '@testing-library/jest-dom/vitest';
+import React from 'react';
+import type { RenderResult, RenderOptions, Queries } from '@testing-library/react';
 
-// Extend globalThis type for vi
+// Use global vi from Vitest
+declare const vi: typeof import('vitest').vi;
+
+// Extend the global type to include our test utilities
 declare global {
-  // eslint-disable-next-line no-var
-  var vi: {
-    fn: <T extends (...args: any[]) => any>(fn: T) => T;
-    clearAllMocks: () => void;
-    resetAllMocks: () => void;
-    mockImplementation: (fn: any) => any;
-    mockReturnValue: (value: any) => any;
-    mock: (module: any) => any;
-  };
-}
+  // Testing Library globals
+  const render: <
+    Q extends Queries = typeof import('@testing-library/dom').queries,
+    Container extends Element | DocumentFragment = HTMLElement
+  >(
+    ui: React.ReactElement,
+    options?: RenderOptions<Q, Container>
+  ) => RenderResult<Q> & { container: Container };
 
-// Mock vi globally for Vitest
-if (!globalThis.vi) {
-  globalThis.vi = {
-    fn: (fn: any) => fn,
-    clearAllMocks: () => {},
-    resetAllMocks: () => {},
-    mockImplementation: (fn: any) => fn,
-    mockReturnValue: (value: any) => value,
-    mock: (fn: any) => fn,
-  };
-}
-
-// Add type for IS_REACT_ACT_ENVIRONMENT
-declare global {
-  // eslint-disable-next-line no-var
-  var IS_REACT_ACT_ENVIRONMENT: boolean;
-  
-  // Extend Window interface to include our mocks
+  // Extend Window interface with test-related properties
   interface Window {
-    ResizeObserver: typeof ResizeObserver;
+    __VITEST__: boolean;
+    Image: new (width?: number, height?: number) => HTMLImageElement;
+    matchMedia: (query: string) => MediaQueryList;
+    scrollTo: {
+      (options?: ScrollToOptions): void;
+      (x: number, y: number): void;
+    };
+  }
+
+  // Node.js globals
+  interface ProcessEnv {
+    NODE_ENV: 'test' | 'development' | 'production';
+    VITEST: string;
   }
 }
 
-// Set up React testing environment
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// Mock browser APIs
+beforeAll(() => {
+  // 1. Mock window.scrollTo with proper type signature
+  window.scrollTo = vi.fn((..._args: [ScrollToOptions] | [number, number]) => {
+    // Implementation can be empty as it's a mock
+    // Using _args to indicate it's intentionally unused
+  }) as Window['scrollTo'];
 
-// Mock window.matchMedia
-const mockMatchMedia = (query: string) => ({
-  matches: false,
-  media: query,
-  onchange: null,
-  addListener: vi.fn(() => {}),
-  removeListener: vi.fn(() => {}),
-  addEventListener: vi.fn((_event: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | AddEventListenerOptions) => {}),
-  removeEventListener: vi.fn((_event: string, _listener: EventListenerOrEventListenerObject, _options?: boolean | EventListenerOptions) => {}),
-  dispatchEvent: vi.fn((_event: Event) => true),
-});
+  // 2. Mock window.matchMedia
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: mockMatchMedia,
-});
-
-// Mock IntersectionObserver
-class MockIntersectionObserver {
-  readonly root: Element | null = null;
-  readonly rootMargin: string = '';
-  readonly thresholds: ReadonlyArray<number> = [];
-  
-  constructor(private callback: IntersectionObserverCallback) {}
-  
-  observe(target: Element) {
-    // Immediately invoke callback with the target being visible
-    this.callback([{
-      isIntersecting: true,
-      target,
-      time: 0,
-      intersectionRatio: 1,
-      boundingClientRect: {} as DOMRectReadOnly,
-      intersectionRect: {} as DOMRectReadOnly,
-      rootBounds: null,
-    } as IntersectionObserverEntry], this);
-  }
-  
-  unobserve() {}
-  disconnect() {}
-  takeRecords(): IntersectionObserverEntry[] { return []; }
-}
-
-Object.defineProperty(window, 'IntersectionObserver', {
-  writable: true,
-  configurable: true,
-  value: MockIntersectionObserver,
-});
-
-// Mock matchMedia for Framer Motion - removed duplicate implementation
-
-// Mock requestAnimationFrame
-const requestAnimationFrame = (callback: FrameRequestCallback) => {
-  return window.setTimeout(callback, 0);
-};
-
-const cancelAnimationFrame = (id: number) => {
-  window.clearTimeout(id);
-};
-
-Object.defineProperty(window, 'requestAnimationFrame', {
-  value: requestAnimationFrame,
-  writable: true,
-});
-
-Object.defineProperty(window, 'cancelAnimationFrame', {
-  value: cancelAnimationFrame,
-  writable: true,
-});
-
-// Mock ResizeObserver
-type ResizeObserverCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver) => void;
-
-class ResizeObserverMock {
-  constructor(public callback: ResizeObserverCallback) {}
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-Object.defineProperty(window, 'ResizeObserver', {
-  writable: true,
-  value: ResizeObserverMock,
-});
-
-// Mock scrollIntoView
-if (typeof window !== 'undefined' && window.HTMLElement) {
-  window.HTMLElement.prototype.scrollIntoView = vi.fn((_options?: boolean | ScrollIntoViewOptions) => {});
-}
-
-// Define test cleanup function
-const cleanupTest = () => {
-  cleanup();
-  vi.clearAllMocks();
-  vi.resetAllMocks();
-};
-
-// Export for use in test files
-export { cleanupTest };
-
-// Setup global test environment
-if (typeof afterEach === 'function') {
-  afterEach(cleanupTest);
-} else {
-  // Fallback for environments where afterEach is not available
-  // This will be handled by the test runner
-  const afterEach = (fn: () => void) => {
-    // This is a no-op in the global scope, will be used by test runners
-    return fn;
+  // 3. Mock Image constructor
+  const MockImage = class {
+    onload: (() => void) | null = null;
+    addEventListener = vi.fn((event: string, callback: () => void) => {
+      if (event === 'load') {
+        this.onload = callback;
+      }
+    });
+    removeEventListener = vi.fn();
+    dispatchEvent = vi.fn();
   };
-  afterEach(cleanupTest);
+  
+  window.Image = MockImage as unknown as typeof Image;
+});
+
+// Mock @iconify/react
+vi.mock('@iconify/react', () => ({
+  Icon: ({ icon, ...props }: { icon: string; [key: string]: unknown }) => {
+    return React.createElement('span', {
+      'data-testid': 'mock-icon',
+      'data-icon': icon,
+      role: 'img',
+      'aria-label': (props as { 'aria-label'?: string })['aria-label'] || 'icon',
+      ...props
+    });
+  },
+}));
+
+// Mock framer-motion
+const createMotionComponent = <T extends keyof JSX.IntrinsicElements>(
+  tagName: T,
+  displayName: string
+) => {
+  const Component = React.forwardRef<HTMLElement, React.ComponentProps<T>>(
+    (props, ref) => {
+      const { children, ...rest } = props as React.PropsWithChildren<Record<string, unknown>>;
+      return React.createElement(tagName, { ...rest, ref }, children);
+    }
+  );
+  Component.displayName = displayName;
+  return Component;
+};
+
+const motion = {
+  div: createMotionComponent('div', 'motion.div'),
+  img: createMotionComponent('img', 'motion.img'),
+};
+
+vi.mock('framer-motion', () => ({
+  motion,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  useAnimation: () => ({
+    start: vi.fn(),
+    set: vi.fn(),
+    stop: vi.fn(),
+  }),
+  useInView: () => [vi.fn(), true],
+  useReducedMotion: () => false,
+}));
+
+// Ensure React is available globally
+if (!('React' in globalThis)) {
+  (globalThis as { React: typeof React }).React = React;
 }
+
+// Reset all mocks before each test
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+// Mock implementation of matchMedia
+const createMatchMedia = (matches = false): MediaQueryList => ({
+  matches,
+  media: '',
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn() as (event: Event) => boolean,
+});
+
+// Test utilities
+export const testUtils = {
+  mockMatchMedia: (matches = false) => createMatchMedia(matches)
+};

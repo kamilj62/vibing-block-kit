@@ -58,7 +58,6 @@ export const ModalContainer: React.FC<{ children: React.ReactNode }> = ({ childr
           onClose={closeModal}
           title={modalState.props.title}
           size={modalState.props.size}
-          position={modalState.props.position}
         >
           {modalState.props.content}
         </BlockModal>

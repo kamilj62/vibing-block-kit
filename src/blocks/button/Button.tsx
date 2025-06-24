@@ -26,8 +26,8 @@ const getButtonLayoutClasses = (
   };
 };
 
-type ButtonVariant = keyof typeof buttonVariants;
-type ButtonSize = keyof typeof buttonSizes;
+export type ButtonVariant = keyof typeof buttonVariants;
+export type ButtonSize = keyof typeof buttonSizes;
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /**

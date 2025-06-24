@@ -74,7 +74,7 @@ export const SimpleImageBlock: React.FC<SimpleImageBlockProps> = ({
   const [hasError, setHasError] = React.useState(false);
   const [isZoomed, setIsZoomed] = React.useState(false);
   const [isInView, setIsInView] = React.useState(!lazyLoad);
-  const [currentSrc, setCurrentSrc] = React.useState<string>('');
+  const [currentSrc, setCurrentSrc] = React.useState<string>(lqip || '');
   
   // Refs
   const containerRef = React.useRef<HTMLDivElement>(null);

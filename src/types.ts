@@ -2,8 +2,14 @@ import React from 'react';
 
 /**
  * Type for block data that can be passed to onChange
+ * Uses a mapped type to avoid circular references
  */
-export type BlockData = Record<string, string | number | boolean | null | undefined | BlockData | Array<unknown>>;
+type Primitive = string | number | boolean | null | undefined;
+type JsonArray = JsonValue[];
+type JsonObject = { [key: string]: JsonValue };
+type JsonValue = Primitive | JsonArray | JsonObject;
+
+export type BlockData = JsonObject;
 
 /**
  * Base properties for all blocks

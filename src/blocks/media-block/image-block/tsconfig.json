@@ -1,19 +1,30 @@
 {
-  "extends": "../../../../tsconfig.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "outDir": "./dist",
     "rootDir": ".",
     "baseUrl": "../../../../",
+    "tsBuildInfoFile": "../../../../node_modules/.cache/tsbuildinfo/media-block/image-block/tsconfig.tsbuildinfo",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@vibing-ai/block-kit": ["src/index"],
+      "@vibing-ai/block-kit/*": ["src/*"]
     },
-    "noEmit": false,
-    "declaration": true,
-    "declarationMap": true
+    "jsx": "react-jsx",
+    "types": ["node", "jest", "@testing-library/jest-dom"]
   },
-  "include": ["./"],
+  "include": [
+    "./**/*.tsx",
+    "./**/*.ts",
+    "../../**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
   "references": [
-    { "path": "../../../../tsconfig.json" }
+    { "path": "../tsconfig.json" }
   ]
 }

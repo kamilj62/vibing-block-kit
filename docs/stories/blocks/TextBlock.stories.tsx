@@ -6,19 +6,12 @@ const meta: Meta<typeof TextBlock> = {
   component: TextBlock,
   tags: ['autodocs'],
   argTypes: {
-    content: { control: 'text' },
-    variant: { 
+    text: { control: 'text' },
+    type: { 
       control: 'select', 
-      options: ['paragraph', 'heading', 'subheading', 'caption']
+      options: ['paragraph', 'heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6']
     },
-    weight: {
-      control: 'select',
-      options: ['normal', 'medium', 'semibold', 'bold']
-    },
-    size: {
-      control: 'select',
-      options: ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl']
-    }
+    className: { control: 'text' },
   },
 };
 
@@ -28,24 +21,20 @@ type Story = StoryObj<typeof TextBlock>;
 export const Basic: Story = {
   args: {
     id: 'text-block-example',
-    content: 'This is a basic text block',
+    text: 'This is a basic text block',
   },
 };
 
 export const Formatted: Story = {
   args: {
-    id: 'formatted-text-block-example',
-    content: 'This text has **bold** and *italic* formatting',
-    variant: 'paragraph',
-    weight: 'medium',
+    text: 'This is a heading text block',
+    type: 'heading1',
   },
 };
 
 export const WithHeading: Story = {
   args: {
-    id: 'heading-text-block-example',
-    content: 'Text block with a heading',
-    variant: 'heading',
-    size: '2xl',
+    text: 'Text block with a heading',
+    type: 'heading1',
   },
-}; 
+};

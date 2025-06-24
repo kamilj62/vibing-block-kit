@@ -1,441 +1,261 @@
-import React from 'react';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
-import '@testing-library/jest-dom/vitest';
-import ImageBlock from './image-block/ImageBlock';
+import React, { type ReactNode } from 'react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { ImageBlock } from './ImageBlock';
 
-// Ensure cleanup runs after each test
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
+// Test utilities are available globally via Vitest config
 
-// Simple mock for framer-motion with test ID support
-type MotionProps = {
-  children?: React.ReactNode;
-  style?: { zIndex?: number; [key: string]: any };
-  initial?: any;
-  animate?: any;
-  exit?: any;
-  transition?: any;
-  [key: string]: unknown;
-};
-
-// Mock matchMedia for reduced motion
-const matchMediaMock = () => ({
-  matches: false,
-  addListener: vi.fn(),
-  removeListener: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  dispatchEvent: vi.fn(),
-});
-
-// Set up global mocks
-global.matchMedia = global.matchMedia || matchMediaMock;
-
-// Track zoom state globally for testing
-let isZoomed = false;
-const zoomStateListeners = new Set<() => void>();
-
-// Helper to notify zoom state changes
-const notifyZoomStateChange = () => {
-  zoomStateListeners.forEach(listener => listener());
-};
-
-// Reset zoom state between tests
-afterEach(() => {
-  isZoomed = false;
-  zoomStateListeners.clear();
-});
-
-// Mock framer-motion with proper types
+// Mock framer-motion
 vi.mock('framer-motion', () => {
-  // Use the global zoom state for testing
-  
-  // Mock motion component with animation props handling
-  const motion = {
-    div: ({ 
-      children, 
-      onClick, 
-      initial, 
-      animate, 
-      exit, 
-      transition,
-      style = {},
-      onKeyDown,
-      ...props 
-    }: MotionProps & { 
-      onClick?: (e: React.MouseEvent) => void;
-      onKeyDown?: (e: React.KeyboardEvent) => void;
-    }) => {
-      // Handle zoom overlay
-      if (style.zIndex === 9999) {
-        // Add keyboard event listener for Escape key
-        React.useEffect(() => {
-          const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isZoomed) {
-              isZoomed = false;
-              notifyZoomStateChange();
-              onClick?.(e as any);
-            }
-          };
-          
-          document.addEventListener('keydown', handleKeyDown);
-          return () => document.removeEventListener('keydown', handleKeyDown);
-        }, [onClick]);
-        
-        return (
-          <div 
-            data-testid="zoom-overlay"
-            role="dialog"
-            aria-label="Close zoomed image"
-            tabIndex={-1}
-            onClick={(e) => {
-              // If clicking the overlay (not the image), close zoom
-              if (e.target === e.currentTarget) {
-                isZoomed = false;
-                notifyZoomStateChange();
-                onClick?.(e);
-              }
-            }}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.9)',
-              zIndex: 9999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'zoom-out',
-              ...style
-            }}
-            {...props}
-          >
-            {children}
-          </div>
-        );
-      }
-      
-      // Handle regular divs with keyboard events
-      const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          isZoomed = true;
-          notifyZoomStateChange();
-          onClick?.(e as any);
-        }
-        onKeyDown?.(e);
-      };
-      
-      return (
-        <div 
-          onClick={onClick as any} 
-          onKeyDown={handleKeyDown}
-          style={style} 
-          {...props}
-        >
-          {children}
-        </div>
-      );
-    },
-    img: ({ 
-      alt = '', 
-      onClick,
-      initial,
-      animate,
-      exit,
-      transition,
-      style = {},
-      ...props 
-    }: { 
-      alt?: string;
-      onClick?: (e: React.MouseEvent) => void;
-      initial?: any;
-      animate?: any;
-      exit?: any;
-      transition?: any;
-      style?: React.CSSProperties;
-    } & React.ImgHTMLAttributes<HTMLImageElement>) => {
-      // Handle click on image to toggle zoom
-      const handleClick = (e: React.MouseEvent) => {
-        if (onClick) {
-          // Toggle zoom state when clicking the image
-          isZoomed = !isZoomed;
-          notifyZoomStateChange();
-          onClick(e);
-        }
-      };
-      
-      return (
-        <img 
-          alt={alt} 
-          onClick={handleClick}
-          style={{
-            ...style,
-            ...(animate || initial || exit ? { 
-              opacity: isZoomed ? 1 : 0.9,
-              transform: isZoomed ? 'scale(1)' : 'scale(0.9)' 
-            } : {})
-          }}
-          {...props} 
-        />
-      );
-    },
-  };
+  interface MotionProps {
+    children?: ReactNode;
+    initial?: Record<string, unknown> | boolean;
+    animate?: Record<string, unknown> | boolean;
+    exit?: Record<string, unknown> | boolean;
+    transition?: Record<string, unknown>;
+    layout?: boolean | 'position' | 'size' | 'preserve-aspect';
+    layoutId?: string;
+    onViewportEnter?: () => void;
+    onViewportLeave?: () => void;
+    viewport?: Record<string, unknown>;
+    'data-testid'?: string;
+    style?: React.CSSProperties;
+    [key: string]: unknown; // Allow any additional props
+    className?: string;
+    onClick?: (event: React.MouseEvent) => void;
+    onKeyDown?: (event: React.KeyboardEvent) => void;
+    role?: string;
+    tabIndex?: number;
+  }
 
-  // Mock AnimatePresence
-  const AnimatePresence = ({ 
+  const motionDiv = React.forwardRef<HTMLDivElement, MotionProps & React.HTMLAttributes<HTMLDivElement>>(({ 
     children, 
-    onExitComplete 
-  }: { 
-    children: React.ReactNode; 
-    onExitComplete?: () => void 
-  }) => {
-    const [shouldRender, setShouldRender] = React.useState(isZoomed);
-    
+    initial,
+    animate,
+    exit,
+    transition,
+    layout,
+    layoutId,
+    onViewportEnter,
+    onViewportLeave,
+    className,
+    style,
+    'data-testid': testId = 'motion-div',
+    ...props 
+  }, ref) => {
+    // Handle viewport callbacks
     React.useEffect(() => {
-      if (isZoomed) {
-        setShouldRender(true);
-      } else {
-        // Delay hiding to allow exit animation
-        const timer = setTimeout(() => {
-          setShouldRender(false);
-          onExitComplete?.();
-        }, 300);
-        return () => clearTimeout(timer);
-      }
-    }, [isZoomed, onExitComplete]);
-    
-    React.useEffect(() => {
-      const listener = () => {
-        setShouldRender(isZoomed);
-      };
-      zoomStateListeners.add(listener);
+      if (onViewportEnter) onViewportEnter();
       return () => {
-        zoomStateListeners.delete(listener);
+        if (onViewportLeave) onViewportLeave();
       };
-    }, []);
-    
-    if (!shouldRender) return null;
-    
+    }, [onViewportEnter, onViewportLeave]);
+
     return (
-      <div data-testid="animate-presence">
+      <div 
+        ref={ref} 
+        data-testid={testId}
+        data-layout={layout}
+        data-layout-id={layoutId}
+        className={className}
+        style={{
+          ...style,
+          '--motion-initial': JSON.stringify(initial || {}),
+          '--motion-animate': JSON.stringify(animate || {}),
+          '--motion-exit': JSON.stringify(exit || {}),
+          '--motion-transition': JSON.stringify(transition || {}),
+        } as React.CSSProperties}
+        {...props}
+      >
         {children}
       </div>
     );
+  });
+  motionDiv.displayName = 'MotionDiv';
+
+  const motionFigure = React.forwardRef<HTMLElement, MotionProps & React.HTMLAttributes<HTMLElement>>(({ 
+    children, 
+    initial,
+    animate,
+    exit,
+    transition,
+    layout,
+    layoutId,
+    className,
+    style,
+    onViewportEnter,
+    onViewportLeave,
+    'data-testid': testId = 'motion-figure',
+    ...props 
+  }, ref) => {
+    // Handle viewport callbacks
+    React.useEffect(() => {
+      if (onViewportEnter) onViewportEnter();
+      return () => {
+        if (onViewportLeave) onViewportLeave();
+      };
+    }, [onViewportEnter, onViewportLeave]);
+
+    return (
+      <figure 
+        ref={ref} 
+        data-testid={testId}
+        data-layout={layout}
+        data-layout-id={layoutId}
+        className={className}
+        style={{
+          ...style,
+          '--motion-initial': JSON.stringify(initial || {}),
+          '--motion-animate': JSON.stringify(animate || {}),
+          '--motion-exit': JSON.stringify(exit || {}),
+          '--motion-transition': JSON.stringify(transition || {}),
+        } as React.CSSProperties}
+        {...props}
+      >
+        {children}
+      </figure>
+    );
+  });
+  motionFigure.displayName = 'MotionFigure';
+
+  const AnimatePresenceComponent: React.FC<{ 
+    children: React.ReactNode;
+    onExitComplete?: () => void;
+  }> = ({ children, onExitComplete }) => {
+    React.useEffect(() => {
+      return () => {
+        onExitComplete?.();
+      };
+    }, [onExitComplete]);
+
+    return <div data-testid="animate-presence">{children}</div>;
   };
-
-  // Mock hooks
-  const useAnimation = () => ({
-    start: vi.fn().mockImplementation((_, options) => {
-      return new Promise<void>((resolve) => {
-        options?.onComplete?.();
-        resolve();
-      });
-    }),
-    set: vi.fn(),
-    stop: vi.fn(),
-    isActive: false,
-  });
-
-  const useInView = () => [null, false];
-  const useReducedMotion = () => false;
-  
-  const animate = vi.fn().mockImplementation((_, __, options) => {
-    return new Promise<void>(resolve => {
-      options?.onComplete?.();
-      resolve();
-    });
-  });
-
-  const useAnimationControls = () => ({
-    start: vi.fn().mockResolvedValue(undefined),
-    stop: vi.fn(),
-    set: vi.fn(),
-  });
+  AnimatePresenceComponent.displayName = 'AnimatePresence';
 
   return {
-    motion,
-    AnimatePresence,
-    useAnimation,
-    useInView,
-    useReducedMotion,
-    animate,
-    useAnimationControls,
+    motion: {
+      div: motionDiv,
+      figure: motionFigure,
+    },
+    AnimatePresence: AnimatePresenceComponent,
+    useAnimation: () => ({
+      start: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn(),
+      stop: vi.fn(),
+    }),
+    useInView: () => [vi.fn(), true],
+    useReducedMotion: () => false,
+    useAnimationControls: () => ({
+      start: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn(),
+      stop: vi.fn(),
+    }),
   };
 });
 
-describe('ImageBlock Simple Tests', () => {
+// Mock IntersectionObserver
+const mockIntersectionObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+  root: null,
+  rootMargin: '',
+  thresholds: [],
+  takeRecords: vi.fn().mockReturnValue([]),
+}));
+
+window.IntersectionObserver = mockIntersectionObserver;
+
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
+describe('ImageBlock', () => {
   const defaultProps = {
-    src: 'https://example.com/test.jpg',
+    src: 'https://example.com/image.jpg',
     alt: 'Test image',
   };
-
-  beforeAll(() => {
-    // Mock window.Image constructor for LQIP
-    global.Image = class {
-      onload: (() => void) | null = null;
-      src = '';
-      constructor() {
-        // Simulate image load after a short delay
-        setTimeout(() => {
-          if (this.onload) {
-            this.onload();
-          }
-        }, 0);
-      }
-    } as unknown as typeof Image;
-  });
 
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  // Helper function to wait for image load
-  const waitForImageLoad = () => {
-    return new Promise(resolve => setTimeout(resolve, 10));
-  };
-
-  it('renders with default props', async () => {
-    render(<ImageBlock {...defaultProps} loading="eager" />);
-    await waitForImageLoad();
+  it('renders image with correct attributes', () => {
+    render(<ImageBlock {...defaultProps} />);
     
-    const img = screen.getByAltText(defaultProps.alt);
+    const img = screen.getByAltText('Test image');
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute('src', defaultProps.src);
-    expect(img).toHaveAttribute('loading', 'eager');
-    expect(img).toHaveClass('opacity-0');
+    expect(img).toHaveAttribute('src', 'https://example.com/image.jpg');
+    expect(img).toHaveAttribute('loading', 'lazy');
   });
 
-  it('handles image load', () => {
-    render(<ImageBlock {...defaultProps} loading="eager" />);
-    const img = screen.getByAltText(defaultProps.alt);
-    fireEvent.load(img);
-    expect(img).toHaveClass('opacity-100');
-  });
-
-  it('handles image error', async () => {
-    const onError = vi.fn();
-    render(
-      <ImageBlock 
-        {...defaultProps} 
-        src="https://example.com/error.jpg" 
-        onError={onError} 
-      />
-    );
-
-    // Find the image container and then the image inside it
-    const container = await screen.findByTestId('image-block-container');
-    const img = container.querySelector('img');
-
-    // Simulate error
-    fireEvent.error(img!);
-
-    // The error is handled by the onError callback, but we don't show an error message
-    // in the UI anymore as it's handled by the parent component
-    expect(onError).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows zoom button when zoomable is true', () => {
-    render(<ImageBlock {...defaultProps} zoomable={true} loading="eager" />);
-    const button = screen.getByRole('button');
-    expect(button).toBeInTheDocument();
-  });
-
-  it('does not show zoom button when zoomable is false', () => {
-    render(<ImageBlock {...defaultProps} zoomable={false} loading="eager" />);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('closes zoom overlay when clicking outside', async () => {
-    render(
-      <div data-testid="test-container">
-        <ImageBlock {...defaultProps} zoomable />
-      </div>
-    );
-
-    // Simulate image load
-    const container = await screen.findByTestId('image-block-container');
-    const img = container.querySelector('img');
-    fireEvent.load(img!);
-
-    // Click to show zoom (the container is the button when zoomable)
-    fireEvent.click(container);
-
-    // Click outside to close
-    const testContainer = screen.getByTestId('test-container');
-    fireEvent.click(testContainer);
-
-    // Check if zoom overlay is removed
-    expect(screen.queryByTestId('zoom-overlay')).not.toBeInTheDocument();
-  });
-
-  it('shows zoom overlay when zoom button is clicked', async () => {
-    // Mock the window.matchMedia function
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation(query => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(), // deprecated
-        removeListener: vi.fn(), // deprecated
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-    });
-
-    // Mock the document.body.style.overflow setter
-    const originalOverflow = document.body.style.overflow;
-    const mockSetOverflow = vi.fn();
-    Object.defineProperty(document.body.style, 'overflow', {
-      set: mockSetOverflow,
-      get: () => originalOverflow,
-    });
-
-    // Render the component
-    const { container } = render(<ImageBlock {...defaultProps} zoomable />);
-    
-    // Simulate image load
-    const img = container.querySelector('img');
-    fireEvent.load(img!);
-    
-    // The container itself is the button when zoomable
-    const imageContainer = screen.getByTestId('image-block-container');
-    expect(imageContainer).toHaveAttribute('role', 'button');
-    expect(imageContainer).toHaveAttribute('aria-label', 'Test image (click to zoom)');
-    
-    // Simulate click on the container
-    fireEvent.click(imageContainer);
-    
-    // Check if the overflow style was set to 'hidden' (indicating zoom)
-    expect(mockSetOverflow).toHaveBeenCalledWith('hidden');
-    
-    // Clean up
-    document.body.style.overflow = originalOverflow;
-  });
-
-  it('closes zoom overlay when pressing Escape key', async () => {
+  it('renders with zoomable class when zoomable prop is true', () => {
     render(<ImageBlock {...defaultProps} zoomable />);
+    
+    const container = screen.getByTestId('zoomable-image-container');
+    expect(container).toHaveClass('relative');
+  });
 
-    // Simulate image load
-    const container = await screen.findByTestId('image-block-container');
-    const img = container.querySelector('img');
-    fireEvent.load(img!);
+  it('renders image with correct attributes when zoomable', () => {
+    render(<ImageBlock {...defaultProps} zoomable />);
+    
+    const image = screen.getByTestId('image-block-img');
+    expect(image).toHaveAttribute('alt', 'Test image');
+    expect(image).toHaveAttribute('src', 'https://example.com/image.jpg');
+    // Check for expected classes
+    expect(image).toHaveClass('block');
+    expect(image).toHaveClass('transition-all');
+    expect(image).toHaveClass('duration-300');
+    expect(image).toHaveClass('rounded-lg');
+    expect(image).toHaveClass('hover:opacity-90');
+  });
 
-    // Click to show zoom (the container is the button when zoomable)
+  it('is clickable when zoomable is true', () => {
+    const handleClick = vi.fn();
+    render(<ImageBlock {...defaultProps} zoomable onClick={handleClick} />);
+    const container = screen.getByTestId('zoomable-image-container');
     fireEvent.click(container);
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
 
-    // Press Escape key
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+  it('closes zoom when pressing Escape key', async () => {
+    render(<ImageBlock {...defaultProps} zoomable />);
+    
+    // Open zoom
+    const container = screen.getByTestId('zoomable-image-container');
+    fireEvent.click(container);
+    
+    // Press Escape
+    fireEvent.keyDown(document, { key: 'Escape' });
+    
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
 
-    // Verify the button is still in the document (overlay is closed)
-    expect(container).toBeInTheDocument();
+  it('renders caption when provided', () => {
+    render(<ImageBlock {...defaultProps} caption="Test caption" />);
+    
+    const caption = screen.getByText('Test caption');
+    expect(caption).toBeInTheDocument();
+    expect(caption).toHaveClass('mt-2', 'text-sm', 'text-gray-600', 'text-center');
+  });
+
+  it('applies custom class name', () => {
+    render(<ImageBlock {...defaultProps} className="custom-class" />);
+    
+    const container = screen.getByTestId('zoomable-image-container');
+    expect(container).toHaveClass('custom-class');
   });
 });

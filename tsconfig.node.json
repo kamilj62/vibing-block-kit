@@ -1,19 +1,36 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "outDir": "./dist",
-    "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "react",
+    "jsxImportSource": "@emotion/react",
     "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["node", "vitest/globals"]
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": true,
+    "lib": ["ES2020", "DOM"],
+    "types": ["node"],
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   },
-  "include": ["vite.config.ts", "tsup.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "tsup.config.ts",
+    "vitest.config.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

@@ -13,7 +13,7 @@
  * // Returns 'button primary disabled'
  * cn('button', { primary: true, disabled: true, active: false })
  */
-export function cn(...classes: Array<string | Record<string, boolean | undefined | null>>): string {
+export function cn(...classes: Array<string | boolean | Record<string, boolean | undefined | null>>): string {
   return classes
     .flatMap(cls => {
       if (typeof cls === 'string') {

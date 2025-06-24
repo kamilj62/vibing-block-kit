@@ -1,0 +1,359 @@
+
+import * as React from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+ import type { ImageBlockProps, BorderRadiusScale, ShadowScale } from './types';
+
+
+// Define constants for radius and shadow values with proper typing
+const radiusMap: Record<BorderRadiusScale, string> = {
+  none: '0',
+  sm: '0.25rem',
+  md: '0.5rem',
+  lg: '1rem',
+  full: '9999px',
+} as const;
+
+const shadowMap: Record<ShadowScale, string> = {
+  none: 'none',
+  sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+} as const;
+
+// Fallback image source (transparent 1x1 pixel)
+const FALLBACK_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxIiBoZWlnaHQ9IjEiPjwvc3ZnPg==';
+
+// Define the component with proper typing
+const ImageBlock = React.forwardRef<HTMLDivElement, ImageBlockProps>((props, ref) => {
+  // Destructure props with defaults
+  const {
+    src: srcProp,
+    alt = '',
+    width = '100%',
+    height = 'auto',
+    loading = 'lazy',
+    decoding = 'async',
+    fetchPriority = 'auto',
+    caption,
+    borderRadius = 'none',
+    shadow = 'none',
+    hasBorder = false,
+    objectFit = 'cover',
+    onLoad,
+    onError: onErrorProp,
+    onZoomChange,
+    className = '',
+    lqip,
+    zoomable = false,
+    sizes = '100vw',
+    ...restProps
+  } = props;
+
+  // Component state
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null);
+  
+  // Refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  
+  // Combine forwarded ref with local ref
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node;
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }
+  }, [ref]);
+
+  // Get the current source, handling different input types
+  const getCurrentSrc = useCallback((): string | null => {
+    if (!srcProp) return null;
+
+    // Handle string case
+    if (typeof srcProp === 'string') {
+      const trimmed = srcProp.trim();
+      return trimmed || null;
+    }
+    
+    // Handle array case
+    if (Array.isArray(srcProp) && srcProp.length > 0) {
+      const firstItem = srcProp[0];
+      if (!firstItem) return null;
+      
+      // Handle array of strings or ImageSource objects
+      if (typeof firstItem === 'string') {
+        const trimmed = firstItem.trim();
+        return trimmed || null;
+      }
+      
+      if (firstItem && typeof firstItem === 'object' && 'src' in firstItem) {
+        const src = String(firstItem.src).trim();
+        return src || null;
+      }
+      
+      return null;
+    }
+    
+    // Handle object case (e.g., { src: string })
+    if (typeof srcProp === 'object' && 'src' in srcProp) {
+      const src = String((srcProp as { src: string }).src).trim();
+      return src || null;
+    }
+    
+    return null;
+  }, [srcProp]);
+  
+  // Update currentSrc when srcProp changes
+  useEffect(() => {
+    const src = getCurrentSrc();
+    setCurrentSrc(src);
+    setIsLoaded(false);
+  }, [getCurrentSrc]);
+
+  // Handle image load
+  const handleLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    setIsLoaded(true);
+    if (onLoad) {
+      onLoad(e);
+    }
+  }, [onLoad]);
+
+  // Handle image error
+  const handleError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.error('Image failed to load:', e);
+    if (onErrorProp) {
+      onErrorProp(e);
+    }
+  }, [onErrorProp]);
+
+  // Handle zoom state changes
+  const toggleZoom = useCallback(() => {
+    if (!zoomable) return;
+    
+    const newZoomState = !isZoomed;
+    setIsZoomed(newZoomState);
+    
+    if (onZoomChange) {
+      onZoomChange(newZoomState);
+    }
+  }, [isZoomed, onZoomChange, zoomable]);
+
+  // Handle Escape key to close zoom
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isZoomed) {
+        setIsZoomed(false);
+        if (onZoomChange) {
+          onZoomChange(false);
+        }
+      }
+    };
+
+    if (isZoomed) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isZoomed, onZoomChange]);
+
+  // Handle click on zoom overlay
+  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isZoomed) {
+      setIsZoomed(false);
+      if (onZoomChange) {
+        onZoomChange(false);
+      }
+    }
+  }, [isZoomed, onZoomChange]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!zoomable) return;
+    
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleZoom();
+    } else if (e.key === 'Escape' && isZoomed) {
+      e.preventDefault();
+      setIsZoomed(false);
+      if (onZoomChange) {
+        onZoomChange(false);
+      }
+    }
+  }, [isZoomed, onZoomChange, toggleZoom, zoomable]);
+
+  // Determine the source to use for the image
+  const imageSource = useMemo(() => {
+    // If we have a valid source, use it
+    if (currentSrc) return currentSrc;
+    
+    // If we have LQIP, use that
+    if (lqip) return lqip;
+    
+    // Otherwise use fallback
+    return FALLBACK_IMAGE;
+  }, [currentSrc, lqip]);
+
+  // Don't render if we have no valid source
+  if (!imageSource) {
+    return null;
+  }
+
+  // Styles
+  const containerStyle: React.CSSProperties = {
+    width: typeof width === 'number' ? `${width}px` : width,
+    height: typeof height === 'number' ? `${height}px` : height,
+    position: 'relative',
+    overflow: 'hidden',
+    cursor: zoomable ? 'zoom-in' : 'default',
+    outline: 'none',
+    borderRadius: radiusMap[borderRadius as BorderRadiusScale],
+    boxShadow: shadowMap[shadow as ShadowScale],
+    border: hasBorder ? '1px solid #e2e8f0' : 'none',
+  };
+
+  const imageStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    objectFit,
+    display: 'block',
+    transition: 'opacity 0.3s ease-out',
+    opacity: isLoaded ? 1 : 0,
+  };
+
+  const lqipStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    filter: 'blur(20px)',
+    opacity: isLoaded ? 0 : 1,
+    transition: 'opacity 0.3s ease-out',
+    objectFit,
+    pointerEvents: 'none',
+  };
+
+  const zoomStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    cursor: 'zoom-out',
+  };
+
+  return (
+    <div
+      ref={setRefs}
+      className={cn('image-block-container', className)}
+      style={containerStyle}
+      onClick={toggleZoom}
+      onKeyDown={handleKeyDown}
+      role={zoomable ? 'button' : 'img'}
+      tabIndex={zoomable ? 0 : undefined}
+      aria-label={zoomable ? alt : undefined}
+      data-testid="image-block-container"
+      {...restProps}
+    >
+      {/* LQIP (Low Quality Image Placeholder) */}
+      {lqip && (
+        <img
+          src={lqip}
+          alt=""
+          aria-hidden="true"
+          style={lqipStyle}
+          className="absolute top-0 left-0 w-full h-full"
+        />
+      )}
+
+      {/* Main Image */}
+      <img
+        ref={imgRef}
+        src={imageSource}
+        alt={zoomable ? '' : alt}
+        aria-hidden="false"
+        width={typeof width === 'number' ? width : undefined}
+        height={typeof height === 'number' ? height : undefined}
+        loading={loading}
+        decoding={decoding}
+        fetchPriority={fetchPriority}
+        sizes={sizes}
+        className={cn(
+          'block w-full h-full',
+          isLoaded ? 'opacity-100' : 'opacity-0',
+          'transition-opacity duration-300 ease-in-out'
+        )}
+        style={{
+          objectFit,
+        }}
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+
+      {/* Zoom Overlay */}
+      <AnimatePresence>
+        {isZoomed && (
+          <motion.div
+            data-testid="zoom-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={zoomStyle}
+            onClick={handleOverlayClick}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Zoomed image: ${alt}`}
+          >
+            <motion.img
+              src={imageSource}
+              alt={alt}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-[90vw] max-h-[90vh] object-contain"
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                objectFit: 'contain',
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Caption */}
+      {caption && (
+        <div className="mt-2 text-sm text-gray-600">
+          {caption}
+        </div>
+      )}
+    </div>
+  );
+});
+
+ImageBlock.displayName = 'ImageBlock';
+
+export { ImageBlock };
+export type { ImageBlockProps };

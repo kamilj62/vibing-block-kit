@@ -10,7 +10,7 @@ const meta: Meta<typeof IframeBlock> = {
     title: { control: 'text' },
     width: { control: 'text' },
     height: { control: 'text' },
-    allowFullScreen: { control: 'boolean' },
+    allowFullscreen: { control: 'boolean' },
   },
 };
 
@@ -34,7 +34,7 @@ export const WithAllowFullscreen: Story = {
     title: 'Example Website with Fullscreen Option',
     width: '100%',
     height: '400px',
-    allowFullScreen: true,
+    allowFullscreen: true,
   },
 };
 

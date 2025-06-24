@@ -1,0 +1,43 @@
+{
+  "presets": [
+    ["@babel/preset-env", {
+      "targets": {
+        "node": "current"
+      },
+      "modules": false,
+      "useBuiltIns": "usage",
+      "corejs": 3
+    }],
+    ["@babel/preset-react", {
+      "runtime": "automatic",
+      "importSource": "@emotion/react"
+    }],
+    "@babel/preset-typescript"
+  ],
+  "plugins": [
+    ["@babel/plugin-transform-typescript", {
+      "isTSX": true,
+      "allExtensions": true,
+      "allowNamespaces": true
+    }],
+    ["@babel/plugin-transform-runtime", {
+      "corejs": 3,
+      "helpers": true,
+      "regenerator": true,
+      "useESModules": false
+    }],
+    "@emotion/babel-plugin"
+  ],
+  "env": {
+    "test": {
+      "presets": [
+        ["@babel/preset-env", {
+          "targets": { "node": "current" }
+        }]
+      ]
+    },
+    "development": {
+      "plugins": ["react-refresh/babel"]
+    }
+  }
+}

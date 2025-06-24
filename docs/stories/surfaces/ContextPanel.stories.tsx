@@ -12,7 +12,7 @@ interface ContextPanelStoryProps {
   sections?: Array<{
     id: string;
     title: string;
-    content: string;
+    content: React.ReactNode;
     isCollapsible?: boolean;
     defaultCollapsed?: boolean;
   }>;
@@ -36,10 +36,12 @@ export const Basic: Story = {
     title: 'Documentation',
     placement: 'right',
     width: '300px',
-    children: React.createElement(TextBlock, {
-      id: "context-text",
-      content: "This is contextual information that provides additional details about the current task or topic. It can include references, documentation, or related content."
-    }),
+    children: (
+      <TextBlock
+        id="context-text"
+        text="This is contextual information that provides additional details about the current task or topic. It can include references, documentation, or related content."
+      />
+    ),
   },
 };
 
@@ -80,13 +82,23 @@ export const Collapsible: Story = {
       {
         id: 'section-1',
         title: 'Quick Start Guide',
-        content: 'Follow these steps to get started with the Block Kit:\n\n1. Install the package\n2. Import the components\n3. Use them in your application',
+        content: (
+          <TextBlock
+            id={`section-${'section-1'}-content`}
+            text="Follow these steps to get started with the Block Kit:\n\n1. Install the package\n2. Import the components\n3. Use them in your application"
+          />
+        ),
         isCollapsible: true,
       },
       {
         id: 'section-2',
         title: 'Common Issues',
-        content: '**Issue 1**: Components not rendering\nSolution: Make sure you\'ve properly imported all dependencies.\n\n**Issue 2**: Styling conflicts\nSolution: Check for CSS conflicts with other libraries.',
+        content: (
+          <TextBlock
+            id={`section-${'section-2'}-content`}
+            text="**Issue 1**: Components not rendering\nSolution: Make sure you've properly imported all dependencies.\n\n**Issue 2**: Styling conflicts\nSolution: Check for CSS conflicts with other libraries."
+          />
+        ),
         isCollapsible: true,
         defaultCollapsed: true,
       },

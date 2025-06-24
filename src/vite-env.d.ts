@@ -1,13 +1,19 @@
 /// <reference types="vite/client" />
 /// <reference types="@testing-library/jest-dom" />
+/// <reference types="vitest" />
 
-// Add type definitions for .svg imports
-declare module '*.svg' {
-  import * as React from 'react';
-  export const ReactComponent: React.FC<React.SVGProps<SVGSVGElement>>;
-  const src: string;
-  export default src;
-}
+// Extend the global namespace to include our test utilities
+declare global {
+  // Vitest globals - these are provided by the test environment
+  // and don't need explicit typing here as they're included via the vitest types
+  
+  // Test environment variables
+  namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV: 'development' | 'production' | 'test';
+      VITEST: 'true' | undefined;
+    }
+  }
 
 // Add type definitions for CSS modules
 declare module '*.module.css' {
@@ -67,3 +73,4 @@ declare module '*.svg' {
 // Add type definitions for testing-library
 /// <reference types="@testing-library/react" />
 /// <reference types="@testing-library/jest-dom" />
+}

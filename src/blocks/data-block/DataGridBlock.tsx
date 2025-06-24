@@ -2,8 +2,101 @@ import React, { useMemo } from 'react';
 import { Card, Input, Button, Select } from '@heroui/react';
 import { Text } from '../../components/Text';
 import { Icon } from '@iconify/react';
-import { useTable, useSortBy, useGlobalFilter, usePagination, TableInstance, Row, Cell, TableState } from 'react-table';
+import { 
+  useTable, 
+  useSortBy, 
+  useGlobalFilter, 
+  usePagination,
+  ColumnInstance,
+  UseSortByColumnProps,
+  TableInstance,
+  HeaderGroup,
+  UsePaginationInstanceProps,
+  UseSortByInstanceProps,
+  UseGlobalFiltersInstanceProps,
+  TableState,
+  UsePaginationState,
+  UseGlobalFiltersState,
+  UseSortByState,
+  UseSortByColumnOptions
+} from 'react-table';
+
+// Define the table state type with all plugins
+type TableStateWithPlugins<T extends object> = TableState<T> & 
+  UsePaginationState<T> & 
+  UseGlobalFiltersState<T> & 
+  UseSortByState<T> & {
+    pageIndex: number;
+    pageSize: number;
+    globalFilter: string;
+  };
+
+// Define the table instance type with all plugins
+type TableInstanceWithHooks<T extends object> = 
+  TableInstance<T> &
+  UsePaginationInstanceProps<T> &
+  UseSortByInstanceProps<T> &
+  UseGlobalFiltersInstanceProps<T> & {
+    state: TableStateWithPlugins<T>;
+  };
+
+// Remove unused TableOptionsWithHooks type
+
+// Extend the ColumnInstance to include our custom properties
+type ExtendedColumnInstance<D extends object> = ColumnInstance<D> & 
+  UseSortByColumnProps<D> & 
+  UseSortByColumnOptions<D> & {
+    canSort?: boolean;
+    disableSortBy?: boolean;
+    isSorted?: boolean;
+    isSortedDesc?: boolean;
+    sortable?: boolean;
+    getSortByToggleProps?: (props?: Record<string, unknown>) => Record<string, unknown>;
+  };
+
+
+
+// Define the data row type - using Record<string, unknown> as the base
+type DataRow = Record<string, unknown>;
+
+// Extend react-table's Column type to include our custom properties
+type ExtendedColumn<D extends object = DataRow> = {
+  Header: string;
+  accessor: Extract<keyof D, string>;
+  width?: number;
+  sortable?: boolean;
+  filterable?: boolean;
+  id: string;
+  // Add meta information for custom functionality
+  meta?: {
+    sortable?: boolean;
+    filterable?: boolean;
+  };
+};
+
 import { BlockProps } from '../../types';
+
+// Define the table options type that matches our data structure
+type TableOptions<D extends object> = {
+  columns: Array<{
+    Header: string;
+    accessor: string;
+    id: string;
+    width?: number;
+    meta?: {
+      sortable?: boolean;
+      filterable?: boolean;
+    };
+  }>;
+  data: D[];
+  initialState: {
+    pageIndex: number;
+    pageSize: number;
+    sortBy: Array<{ id: string; desc: boolean }>;
+    hiddenColumns: string[];
+    globalFilter?: string;
+  };
+};
 
 export interface DataGridColumn {
   field: string;
@@ -11,6 +104,8 @@ export interface DataGridColumn {
   width?: number;
   sortable?: boolean;
   filterable?: boolean;
+  // Add index signature for type compatibility
+  [key: string]: unknown;
 }
 
 export interface DataGridBlockProps extends BlockProps {
@@ -25,29 +120,9 @@ export interface DataGridBlockProps extends BlockProps {
   hoverable?: boolean;
 }
 
-// Extended TableState with pagination properties
-interface TableStateWithPagination<D extends object> extends TableState<D> {
-  pageIndex: number;
-  pageSize: number;
-  globalFilter: string;
-}
+// No need for a separate TableState type as we're using the one from react-table
 
-// Extended table instance with pagination
-interface TableInstanceWithPagination<D extends object> extends TableInstance<D> {
-  page: Row<D>[];
-  canPreviousPage: boolean;
-  canNextPage: boolean;
-  pageOptions: number[];
-  pageCount: number;
-  gotoPage: (updater: ((pageIndex: number) => number) | number) => void;
-  nextPage: () => void;
-  previousPage: () => void;
-  setPageSize: (pageSize: number) => void;
-  setGlobalFilter: (filterValue: string) => void;
-  state: TableStateWithPagination<D>;
-}
-
-export const DataGridBlock: React.FC<DataGridBlockProps> = ({
+export const DataGridBlock: React.FC<Omit<DataGridBlockProps, 'onChange'>> = ({
   id,
   columns,
   rows = [],
@@ -59,61 +134,101 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
   striped = true,
   hoverable = true,
   className,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  
-  
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  onChange,
   ...props
 }) => {
-  // Transform columns for react-table
-  const tableColumns = useMemo(() => 
-    columns.map(col => ({
-      Header: col.headerName,
-      accessor: col.field,
-      width: col.width,
-      disableSortBy: !col.sortable
-    })), 
-    [columns]
+  // Transform columns for react-table with proper typing
+  const tableColumns = useMemo<ExtendedColumn<DataRow>[]>(
+    () => 
+    columns.map(col => {
+      // Validate that the field exists in the first row of data (if available)
+      const firstRow = rows[0];
+      if (firstRow && !(col.field in firstRow)) {
+        console.warn(`Field "${col.field}" not found in data rows. This may cause runtime errors.`);
+      }
+      
+      // Create a column definition that's compatible with react-table
+      const column: ExtendedColumn<DataRow> = {
+        id: col.field, // Required by react-table
+        Header: col.headerName,
+        accessor: col.field, // This is safe because we're working with string keys
+        width: col.width,
+      };
+
+      // Add meta information for custom functionality
+      if (col.sortable || col.filterable) {
+        column.meta = {
+          sortable: col.sortable,
+          filterable: col.filterable,
+        };
+      }
+      
+      return column;
+    }),
+    [columns, rows]
   );
 
-  // Set up react-table instance
+  // Memoize the columns to prevent unnecessary re-renders
+  const memoizedColumns = useMemo(() => tableColumns, [tableColumns]);
+
+  // Create properly typed table options
+  const tableOptions: TableOptions<DataRow> = {
+    columns: memoizedColumns.map(col => ({
+      Header: col.Header,
+      accessor: col.accessor,
+      id: col.id,
+      width: col.width,
+      meta: col.meta
+    })),
+    data: rows,
+    initialState: {
+      pageIndex: 0,
+      pageSize: defaultPageSize,
+      sortBy: [],
+      hiddenColumns: [],
+      globalFilter: ''
+    }
+  };
+
+  // Create the table instance with proper typing
+  const tableInstance = useTable(
+    tableOptions,
+    useGlobalFilter,
+    useSortBy,
+    usePagination
+  ) as TableInstanceWithHooks<DataRow>;
+
+  // Destructure the table instance with proper typing
+  // Destructure table instance methods and state
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
-    prepareRow,
     page,
+    prepareRow,
+    state: { pageIndex, pageSize, globalFilter: globalFilterValue },
     canPreviousPage,
     canNextPage,
-    pageOptions,
     pageCount,
     gotoPage,
     nextPage,
     previousPage,
-    setPageSize,
     setGlobalFilter,
-    state: { pageIndex, pageSize, globalFilter }
-  } = useTable(
-    { 
-      columns: tableColumns, 
-      data: rows,
-      initialState: { 
-        // Type assertion here to tell TypeScript this is correct
-        pageSize: defaultPageSize
-      } as Partial<TableState<object>>
-    },
-    useGlobalFilter,
-    useSortBy,
-    usePagination
-  ) as TableInstanceWithPagination<object>;
+    setPageSize: setPageSizeFn,
+  } = tableInstance;
 
+  // Use the filter value in the input
+  const filterValue = useMemo(() => globalFilterValue || '', [globalFilterValue]);
+
+  // Remove onChange from props to avoid type conflicts with Card's onChange
+  // Use type assertion to handle the props spreading
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { onChange: _onChange, ...cardProps } = props as Omit<DataGridBlockProps, 'onChange'> & Record<string, unknown>;
+  
   return (
-    <Card
+    <Card 
       className={className}
       data-block-id={id}
-      {...props}
+      {...cardProps}
     >
       {title && (
         <Text 
@@ -128,19 +243,18 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
         </Text>
       )}
 
-      <div style={{ 
-        padding: 'var(--hero-spacing-3)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div>
+      <div className="p-3 flex items-center justify-between">
+        <div className="relative w-full max-w-xs">
+          <Icon 
+            icon="heroicons:magnifying-glass" 
+            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-foreground-muted"
+          />
           <Input
             placeholder="Search..."
-            value={globalFilter || ''}
-            onChange={e => setGlobalFilter(e.target.value)}
             size="sm"
-            className="max-w-sm"
+            value={filterValue}
+            onChange={e => setGlobalFilter(e.target.value)}
+            className="w-full pl-8"
           />
         </div>
         
@@ -154,7 +268,7 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
           </Text>
           <Select
             value={pageSize}
-            onChange={e => setPageSize(Number(e.target.value))}
+            onChange={e => setPageSizeFn(Number(e.target.value))}
             size="sm"
           >
             {pageSizeOptions.map(size => (
@@ -172,54 +286,49 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
       <div style={{ overflowX: 'auto' }}>
         <table {...getTableProps()} style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            {headerGroups.map(headerGroup => (
-              <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
-                {headerGroup.headers.map(column => {
-                  // Cast column to any to handle custom properties
-                  const columnAny = column  ;
-                  return (
-                    <th 
-                      {...column.getHeaderProps(columnAny.getSortByToggleProps ? columnAny.getSortByToggleProps() : undefined)}
-                      key={column.id}
-                      style={{
-                        width: columnAny.width,
-                        padding: 'var(--hero-spacing-2)',
-                        textAlign: 'left',
-                        borderBottom: '2px solid var(--hero-color-border)',
-                        backgroundColor: 'var(--hero-color-muted)',
-                        ...(bordered ? { border: '1px solid var(--hero-color-border)' } : {}),
-                        userSelect: 'none',
-                        cursor: columnAny.disableSortBy ? 'default' : 'pointer'
-                      }}
-                    >
-                      <div style={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--hero-spacing-1)'
-                      }}>
-                        {column.render('Header')}
-                        <div>
-                          {!columnAny.disableSortBy && (
-                            columnAny.isSorted ? (
-                              columnAny.isSortedDesc ? (
-                                <Icon icon="heroicons:arrow-down" width={14} />
-                              ) : (
-                                <Icon icon="heroicons:arrow-up" width={14} />
-                              )
-                            ) : (
-                              <Icon icon="heroicons:arrows-up-down" width={14} opacity={0.3} />
-                            )
+            {headerGroups.map((headerGroup: HeaderGroup<Record<string, unknown>>) => {
+              const { key, ...headerProps } = headerGroup.getHeaderGroupProps();
+              return (
+                <tr key={key || `header-group-${headerGroup.id}`} {...headerProps}>
+                  {headerGroup.headers.map((column: ColumnInstance<Record<string, unknown>>) => {
+                    const typedColumn = column as unknown as ExtendedColumnInstance<Record<string, unknown>>;
+                    const columnWithSort = column as unknown as { sortable?: boolean };
+                    const sortable = columnWithSort.sortable ?? false;
+                    
+                    const { key: headerKey, ...headerColumnProps } = column.getHeaderProps(
+                      sortable ? typedColumn.getSortByToggleProps?.() : {}
+                    );
+                    
+                    return (
+                      <th
+                        key={headerKey}
+                        {...headerColumnProps}
+                        className={`px-4 py-2 text-left text-sm font-medium text-foreground-muted ${sortable ? 'cursor-pointer select-none' : ''}`}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>{column.render('Header')}</span>
+                          {sortable && (
+                            <span className="flex flex-col">
+                              <Icon 
+                                icon="heroicons:chevron-up" 
+                                className={`h-3 w-3 ${typedColumn.isSorted && !typedColumn.isSortedDesc ? 'text-primary' : 'text-foreground-muted'}`} 
+                              />
+                              <Icon 
+                                icon="heroicons:chevron-down" 
+                                className={`h-3 w-3 -mt-1 ${typedColumn.isSorted && typedColumn.isSortedDesc ? 'text-primary' : 'text-foreground-muted'}`} 
+                              />
+                            </span>
                           )}
                         </div>
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
+                      </th>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </thead>
           <tbody {...getTableBodyProps()}>
-            {page.map((row: Row<object>, rowIndex: number) => {
+            {page.map((row, rowIndex: number) => {
               prepareRow(row);
               return (
                 <tr 
@@ -230,7 +339,7 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
                     ...(hoverable ? { ':hover': { backgroundColor: 'var(--hero-color-muted-100)' } } : {})
                   }}
                 >
-                  {row.cells.map((cell: Cell<object>) => (
+                  {row.cells.map((cell) => (
                     <td 
                       {...cell.getCellProps()}
                       key={cell.column.id}
@@ -267,24 +376,15 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
       </div>
 
       {showFooter && (
-        <div style={{ 
-          padding: 'var(--hero-spacing-3)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
+        <div className="p-3 flex items-center justify-between">
           <Text size="sm" color="foreground-muted">
             Showing {page.length > 0 ? pageIndex * pageSize + 1 : 0} to {Math.min((pageIndex + 1) * pageSize, rows.length)} of {rows.length} entries
           </Text>
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--hero-spacing-1)'
-          }}>
+
+          <div className="flex items-center space-x-2">
             <Button
-              size="sm"
               variant="ghost"
+              size="sm"
               onClick={() => gotoPage(0)}
               disabled={!canPreviousPage}
               aria-label="First page"
@@ -292,22 +392,17 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
               <Icon icon="heroicons:chevron-double-left" />
             </Button>
             <Button
-              size="sm"
               variant="ghost"
+              size="sm"
               onClick={previousPage}
               disabled={!canPreviousPage}
               aria-label="Previous page"
             >
               <Icon icon="heroicons:chevron-left" />
             </Button>
-            
-            <Text px="2" size="sm">
-              Page {pageIndex + 1} of {pageOptions.length}
-            </Text>
-            
             <Button
-              size="sm"
               variant="ghost"
+              size="sm"
               onClick={nextPage}
               disabled={!canNextPage}
               aria-label="Next page"
@@ -315,10 +410,10 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
               <Icon icon="heroicons:chevron-right" />
             </Button>
             <Button
-              size="sm"
               variant="ghost"
-              onClick={() => gotoPage(pageCount - 1)}
-              disabled={!canNextPage}
+              size="sm"
+              onClick={() => pageCount > 0 && gotoPage(pageCount - 1)}
+              disabled={!canNextPage || pageCount === 0}
               aria-label="Last page"
             >
               <Icon icon="heroicons:chevron-double-right" />
@@ -328,4 +423,4 @@ export const DataGridBlock: React.FC<DataGridBlockProps> = ({
       )}
     </Card>
   );
-}; 
+};

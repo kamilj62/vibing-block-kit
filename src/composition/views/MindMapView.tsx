@@ -25,12 +25,9 @@ interface MindMapViewProps {
 export const MindMapView: React.FC<MindMapViewProps> = ({
   rootNode,
   onNodeClick,
+  // onNodeEdit is intentionally unused in this component
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  
-  
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  onNodeEdit,
+  onNodeEdit: _onNodeEdit,
   onNodeAdd,
   onNodeDelete,
   onNodeToggle,

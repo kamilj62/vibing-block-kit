@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import ImageBlock from './ImageBlock';
+import '@testing-library/jest-dom/vitest';
+import { ImageBlock } from './ImageBlock';
+
+// Test utilities are available globally via Vitest config
 
 // Simple mock for IntersectionObserver
 const mockIntersectionObserver = vi.fn();
@@ -84,15 +86,13 @@ describe('ImageBlock', () => {
 
   it('shows caption when provided', () => {
     const caption = 'Test caption';
-    const { container } = render(<ImageBlock {...defaultProps} caption={caption} />);
+    render(<ImageBlock {...defaultProps} caption={caption} />);
     
-    // The caption should be visible
+    // The caption should be visible with the correct styling
     const captionElement = screen.getByText(caption);
     expect(captionElement).toBeInTheDocument();
-    
-    // The caption should be in a div with the correct class
-    const captionDiv = container.querySelector('.mt-2.text-sm.text-gray-600');
-    expect(captionDiv).toBeInTheDocument();
+    expect(captionElement).toHaveClass('text-sm', 'text-white', 'text-center');
+    expect(captionElement).toHaveClass('bg-black/50'); // Semi-transparent black background
   });
 
   describe('Zoom functionality', () => {

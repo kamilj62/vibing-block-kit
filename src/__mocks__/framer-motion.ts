@@ -10,8 +10,11 @@ type MockFunction = {
 };
 
 const createMockFn = (): MockFunction => {
-  const fn = (() => {}) as MockFunction;
-  fn.mockImplementation(() => {});
+  let impl: (() => void) | undefined;
+  const fn = (() => impl?.()) as MockFunction;
+  fn.mockImplementation = (newImpl: () => void) => {
+    impl = newImpl;
+  };
   fn.mockResolvedValue = () => fn;
   fn.mockResolvedValueOnce = () => fn;
   return fn;
@@ -123,13 +126,13 @@ const AnimatePresence: React.FC<AnimatePresenceProps> = ({
     return typeof children === 'function' ? children({}) : children;
   }, [children]);
 
-  return (
-    <div 
-      data-testid="animate-presence" 
-      {...props}
-    >
-      {childrenToRender}
-    </div>
+  return React.createElement(
+    'div',
+    {
+      'data-testid': 'animate-presence',
+      ...props
+    },
+    childrenToRender
   );
 };
 
@@ -167,8 +170,8 @@ const useScroll = () => ({
 
 // Mock useTransform
 const useTransform = <T,>(
-  value: { get: () => number },
-  inputRange: number[],
+  _value: { get: () => number },
+  _inputRange: number[],
   outputRange: T[]
 ) => {
   return {
@@ -194,7 +197,7 @@ const useTransform = <T,>(
 };
 
 // Import actual framer-motion for type information
-import * as ActualFramerMotion from 'framer-motion';
+import type * as ActualFramerMotion from 'framer-motion';
 
 // Create a mock module that combines our mocks with the actual module
 export const mockFramerMotion = {
